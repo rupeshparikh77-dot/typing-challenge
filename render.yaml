@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: speed-typing-challenge
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: "22.12.0"
+      - key: DB_PATH
+        value: /var/data/leaderboard.db
+    disk:
+      name: data
+      mountPath: /var/data
+      sizeGB: 1

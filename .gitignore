@@ -1,0 +1,7 @@
+node_modules/
+leaderboard.db
+leaderboard.db-journal
+leaderboard.db-wal
+leaderboard.db-shm
+*.log
+.DS_Store
