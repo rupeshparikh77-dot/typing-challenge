@@ -1,48 +1,37 @@
 'use strict';
 
 const path = require('path');
+const fs = require('fs');
 const express = require('express');
-const { DatabaseSync } = require('node:sqlite');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const MAX_SCORES = 999;
+const DATA_FILE = process.env.DB_PATH || path.join(__dirname, 'leaderboard.json');
 
-// ---------------------------------------------------------------------------
-// Database (real SQLite via Node's built-in driver — no native build needed)
-// ---------------------------------------------------------------------------
-const db = new DatabaseSync(process.env.DB_PATH || path.join(__dirname, 'leaderboard.db'));
-db.exec(`
-  CREATE TABLE IF NOT EXISTS scores (
-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    player_name TEXT    NOT NULL,
-    wpm         INTEGER NOT NULL,
-    accuracy    INTEGER NOT NULL,
-    created_at  TEXT    NOT NULL DEFAULT (datetime('now'))
-  );
-`);
+function load() {
+  try {
+    const parsed = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
 
-const stmts = {
-  list:   db.prepare(`SELECT id, player_name, wpm, accuracy, created_at
-                      FROM scores
-                      ORDER BY accuracy DESC, wpm DESC, created_at ASC
-                      LIMIT ?`),
-  count:  db.prepare(`SELECT COUNT(*) AS c FROM scores`),
-  insert: db.prepare(`INSERT INTO scores (player_name, wpm, accuracy) VALUES (?, ?, ?)`),
-  getOne: db.prepare(`SELECT id, player_name, wpm, accuracy, created_at FROM scores WHERE id = ?`),
-  delOne: db.prepare(`DELETE FROM scores WHERE id = ?`),
-  delAll: db.prepare(`DELETE FROM scores`),
-};
+function save(rows) {
+  try {
+    fs.writeFileSync(DATA_FILE, JSON.stringify(rows));
+  } catch (e) {
+    console.error('Failed to write data file:', e.message);
+  }
+}
 
-// ---------------------------------------------------------------------------
-// Middleware
-// ---------------------------------------------------------------------------
+let scores = load();
+let nextId = scores.reduce((max, r) => Math.max(max, r.id || 0), 0) + 1;
+
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ---------------------------------------------------------------------------
-// Validation
-// ---------------------------------------------------------------------------
 function validateScore(body = {}) {
   const errors = [];
 
@@ -62,47 +51,59 @@ function validateScore(body = {}) {
   };
 }
 
-// ---------------------------------------------------------------------------
-// Routes
-// ---------------------------------------------------------------------------
+function topScores(limit) {
+  return [...scores]
+    .sort((a, b) =>
+      b.accuracy - a.accuracy ||
+      b.wpm - a.wpm ||
+      String(a.created_at).localeCompare(String(b.created_at))
+    )
+    .slice(0, limit);
+}
 
-// Health check
 app.get('/api/health', (req, res) => res.json({ ok: true }));
 
-// GET /api/scores?limit=10  -> sorted leaderboard
 app.get('/api/scores', (req, res) => {
   const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 10, 1), 100);
-  res.json(stmts.list.all(limit));
+  res.json(topScores(limit));
 });
 
-// POST /api/scores  -> submit a score
 app.post('/api/scores', (req, res) => {
-  if (stmts.count.get().c >= MAX_SCORES) {
+  if (scores.length >= MAX_SCORES) {
     return res.status(409).json({ error: `Leaderboard full (${MAX_SCORES} max).` });
   }
   const { errors, value } = validateScore(req.body);
   if (errors.length) return res.status(400).json({ error: errors.join('; ') });
 
-  const info = stmts.insert.run(value.player_name, value.wpm, value.accuracy);
-  res.status(201).json(stmts.getOne.get(info.lastInsertRowid));
+  const row = {
+    id: nextId++,
+    player_name: value.player_name,
+    wpm: value.wpm,
+    accuracy: value.accuracy,
+    created_at: new Date().toISOString(),
+  };
+  scores.push(row);
+  save(scores);
+  res.status(201).json(row);
 });
 
-// DELETE /api/scores/:id  -> remove a single score
 app.delete('/api/scores/:id', (req, res) => {
   const id = parseInt(req.params.id, 10);
   if (!Number.isInteger(id)) return res.status(400).json({ error: 'invalid id' });
-  const info = stmts.delOne.run(id);
-  if (info.changes === 0) return res.status(404).json({ error: 'Score not found' });
-  res.json({ deleted: info.changes });
+  const before = scores.length;
+  scores = scores.filter((r) => r.id !== id);
+  if (scores.length === before) return res.status(404).json({ error: 'Score not found' });
+  save(scores);
+  res.json({ deleted: before - scores.length });
 });
 
-// DELETE /api/scores  -> clear the leaderboard
 app.delete('/api/scores', (req, res) => {
-  const info = stmts.delAll.run();
-  res.json({ deleted: info.changes });
+  const deleted = scores.length;
+  scores = [];
+  save(scores);
+  res.json({ deleted });
 });
 
-// ---------------------------------------------------------------------------
 app.listen(PORT, () => {
   console.log(`Speed Typing Challenge running on http://localhost:${PORT}`);
 });
