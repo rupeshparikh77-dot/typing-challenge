@@ -210,9 +210,13 @@
       submitScore();
     }
 
-    input.addEventListener('input', () => {
+       input.addEventListener('input', () => {
       if (!gameActive) return;
       renderSentence();
+      // Auto-finish the moment the whole sentence has been typed
+      if (input.value === currentSentence) {
+        endGame();
+      }
     });
     input.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') e.preventDefault();
