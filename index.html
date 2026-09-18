@@ -9,9 +9,17 @@
   <style>
     body { font-family: 'DM Sans', sans-serif; }
     .mono { font-family: 'Space Mono', monospace; }
-    .char-correct { color: #22c55e; }
-    .char-incorrect { color: #ef4444; background: #fecaca; border-radius: 2px; }
-    .char-current { border-bottom: 2px solid #f59e0b; }
+
+    #sentence-display {
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+
+    .char-pending   { color: #cbd5e1; }
+    .char-correct   { color: #4ade80; }
+    .char-incorrect { color: #ffffff; background: #ef4444; border-radius: 3px; }
+    .char-current   { background: #f59e0b; color: #1a1a2e; border-radius: 3px; }
   </style>
 </head>
 <body class="min-h-screen p-4 md:p-8" style="background: rgb(26, 26, 46);">
@@ -24,7 +32,7 @@
     <section id="name-input-section" class="mb-6">
       <div class="rounded-xl p-6 text-center" style="background: rgb(22, 33, 62);">
         <h2 class="mb-3" style="color: rgb(245, 245, 245); font-weight: 700; font-size: 22px;">Enter your name</h2>
-        <form id="name-form" class="flex gap-2 max-w-sm mx-auto">
+        <form id="name-form" class="flex flex-col sm:flex-row gap-2 max-w-sm mx-auto">
           <label for="startup-name" class="sr-only">Your name</label>
           <input id="startup-name" type="text" placeholder="Enter your name" maxlength="40"
                  class="flex-1 border-2 border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-amber-400" required>
@@ -38,11 +46,12 @@
       <div id="sentence-display" class="mono text-lg leading-relaxed mb-4 min-h-[3rem]">
         <span class="text-gray-400 italic">Press Start to begin...</span>
       </div>
-      <input id="type-input" type="text"
+      <textarea id="type-input" rows="3"
              class="w-full border-2 border-gray-200 rounded-lg px-4 py-3 mono text-lg focus:outline-none focus:border-amber-400 transition"
-             disabled autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
-      <div class="flex items-center justify-between mt-4">
-        <div class="flex gap-4 text-sm text-gray-200">
+             style="resize: none;"
+             disabled autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
+      <div class="flex flex-wrap items-center justify-between gap-3 mt-4">
+        <div class="flex flex-wrap gap-4 text-sm text-gray-200">
           <span class="font-medium">&#9201; <span id="timer">0.0s</span></span>
           <span class="font-medium">WPM: <span id="wpm-display">0</span></span>
           <span class="font-medium">Acc: <span id="acc-display">100%</span></span>
@@ -60,7 +69,7 @@
       <div class="rounded-xl p-6 text-center" style="background: rgb(22, 33, 62);">
         <h2 class="mb-2" style="color: rgb(245, 245, 245); font-weight: 700; font-size: 22px;">Nice work!</h2>
         <p id="result-stats" class="text-2xl font-bold mono mb-4 text-amber-400"></p>
-        <form id="submit-form" class="flex gap-2 max-w-sm mx-auto">
+        <form id="submit-form" class="flex flex-col sm:flex-row gap-2 max-w-sm mx-auto">
           <label for="player-name" class="sr-only">Your name</label>
           <input id="player-name" type="text" placeholder="Your name" maxlength="40"
                  class="flex-1 border-2 border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-amber-400" required>
@@ -157,7 +166,7 @@
       const typed = input.value;
       let html = '';
       for (let i = 0; i < currentSentence.length; i++) {
-        const ch = currentSentence[i] === ' ' ? '&nbsp;' : escapeHtml(currentSentence[i]);
+        const ch = escapeHtml(currentSentence[i]);
         if (i < typed.length) {
           html += typed[i] === currentSentence[i]
             ? `<span class="char-correct">${ch}</span>`
@@ -165,7 +174,7 @@
         } else if (i === typed.length) {
           html += `<span class="char-current">${ch}</span>`;
         } else {
-          html += `<span class="text-gray-500">${ch}</span>`;
+          html += `<span class="char-pending">${ch}</span>`;
         }
       }
       display.innerHTML = html;
@@ -204,8 +213,10 @@
       if (!gameActive) return;
       renderSentence();
     });
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') e.preventDefault();
+    });
 
-    // ----- Leaderboard (API-backed) -----
     async function fetchLeaderboard() {
       try {
         const res = await fetch(`${API}?limit=10`);
