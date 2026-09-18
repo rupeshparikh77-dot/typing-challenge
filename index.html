@@ -77,11 +77,7 @@
     </section>
 
     <section>
-      <div class="flex items-center justify-between mb-3">
-        <h2 style="color: rgb(245, 245, 245); font-weight: 700; font-size: 20px;">Leaderboard</h2>
-        <button id="clear-btn" class="px-3 py-1 text-sm rounded-lg font-semibold transition hover:opacity-90" onclick="clearLeaderboard()"
-                style="background: rgb(239, 68, 68); color: rgb(255, 255, 255); font-weight: 600; font-size: 16px;">Clear</button>
-      </div>
+      <h2 class="mb-3" style="color: rgb(245, 245, 245); font-weight: 700; font-size: 20px;">Leaderboard</h2>
       <div class="rounded-xl overflow-hidden" style="background: rgb(22, 33, 62);">
         <table class="w-full text-sm text-gray-200">
           <thead>
@@ -97,7 +93,6 @@
           </tbody>
         </table>
       </div>
-      <p class="text-xs mt-3" style="color: rgb(252, 165, 165);">&#9888; Do not click Clear unless necessary — this permanently removes all scores from the leaderboard.</p>
     </section>
   </main>
 
@@ -213,7 +208,7 @@
     input.addEventListener('input', () => {
       if (!gameActive) return;
       renderSentence();
-      if (input.value === currentSentence) {
+      if (input.value.length >= currentSentence.length) {
         endGame();
       }
     });
@@ -280,23 +275,6 @@
         msg.textContent = 'Network error \u2014 tap "Save score" to try again.';
         msg.className = 'text-sm mt-2 text-red-400';
         retry.classList.remove('hidden');
-      }
-    }
-
-    async function clearLeaderboard() {
-      const btn = document.getElementById('clear-btn');
-      const originalText = btn.textContent;
-      btn.disabled = true;
-      btn.textContent = '...';
-      try {
-        const res = await fetch(API, { method: 'DELETE' });
-        if (!res.ok) throw new Error('Failed to clear leaderboard');
-        await fetchLeaderboard();
-      } catch (err) {
-        console.error(err);
-      } finally {
-        btn.disabled = false;
-        btn.textContent = originalText;
       }
     }
 
