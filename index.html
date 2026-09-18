@@ -185,6 +185,7 @@
     }
 
     function endGame() {
+      if (!gameActive) return;
       gameActive = false;
       clearInterval(timerInterval);
       input.disabled = true;
@@ -206,14 +207,12 @@
       document.getElementById('result-stats').textContent = `${lastWpm} WPM \u00B7 ${lastAcc}% accuracy`;
       document.getElementById('submit-section').classList.remove('hidden');
 
-      // Auto-submit the score using the name entered at the start
       submitScore();
     }
 
-       input.addEventListener('input', () => {
+    input.addEventListener('input', () => {
       if (!gameActive) return;
       renderSentence();
-      // Auto-finish the moment the whole sentence has been typed
       if (input.value === currentSentence) {
         endGame();
       }
