@@ -141,38 +141,8 @@
   <script>
     const API = '/api/scores';
 
-    const easySentences = [
-      "The cat sat on the soft warm mat.",
-      "A big red dog ran to the park.",
-      "We can go for a walk in the sun.",
-      "The kids like to play with the ball.",
-      "I see a bird up in the tall tree.",
-      "Mom made a cake for the party."
-    ];
-
-    const mediumSentences = [
-      "The morning train was crowded with tired commuters heading downtown.",
-      "She carefully placed the fragile vase on the wooden shelf.",
-      "Our team finished the project a few days before the deadline.",
-      "The recipe called for fresh basil, garlic, and a pinch of salt.",
-      "He jogged along the river while listening to his favourite podcast.",
-      "The museum exhibit featured paintings from the early modern period."
-    ];
-
-    const hardSentences = [
-      "The ubiquitous bureaucracy exacerbated the entrepreneur's frustration considerably.",
-      "Her meticulous analysis revealed several conspicuous discrepancies in the ledger.",
-      "The philosopher articulated a nuanced argument concerning epistemological certainty.",
-      "An unprecedented confluence of circumstances precipitated the institution's collapse.",
-      "The negotiators sought a pragmatic compromise amid conflicting ideological positions.",
-      "Conscientious stewardship of finite resources necessitates rigorous long-term planning."
-    ];
-
-    const extremeParagraphs = [
-      "The indefatigable lexicographer, confronted with an antediluvian manuscript of inscrutable provenance, meticulously deciphered its labyrinthine orthography, whereupon the erstwhile incomprehensible glyphs unveiled a perspicacious treatise on the quintessential ephemerality of human endeavour.",
-      "Notwithstanding the pusillanimous vacillations of the erstwhile committee, the magnanimous benefactor promulgated an unequivocal proclamation, thereby precipitating a paradigmatic metamorphosis whose ramifications reverberated throughout the beleaguered bureaucracy.",
-      "Amidst the cacophonous kerfuffle of the interminable symposium, the sesquipedalian orator expounded upon abstruse metaphysical conundrums with such grandiloquent perspicacity that his flabbergasted interlocutors were rendered utterly nonplussed."
-    ];
+    // Sentence pools are loaded from /sentences.json (no longer hard-coded here)
+    let sentencePools = null;
 
     const diffNames = { easy: 'Easy', medium: 'Medium', hard: 'Hard', extreme: 'EXTREME' };
 
@@ -214,13 +184,11 @@
     }
 
     function generateText(diff) {
-      switch (diff) {
-        case 'easy':    return pickOne(easySentences);
-        case 'medium':  return pickSome(mediumSentences, 2).join(' ');
-        case 'hard':    return pickSome(hardSentences, 3).join(' ');
-        case 'extreme': return pickOne(extremeParagraphs);
-        default:        return pickOne(easySentences);
-      }
+      const pool = (sentencePools && sentencePools[diff]) || [];
+      if (!pool.length) return '';
+      if (diff === 'medium') return pickSome(pool, 2).join(' ');
+      if (diff === 'hard')   return pickSome(pool, 3).join(' ');
+      return pickOne(pool); // easy & extreme use a single item
     }
 
     function selectDifficulty(level) {
@@ -250,6 +218,11 @@
       }
       if (!difficulty) {
         document.getElementById('difficulty-section').classList.remove('hidden');
+        return;
+      }
+      if (!sentencePools || !(sentencePools[difficulty] && sentencePools[difficulty].length)) {
+        display.innerHTML = '<span class="text-red-400 italic">Still loading passages\u2026 give it a second and press Start again.</span>';
+        loadSentences();
         return;
       }
       currentSentence = generateText(difficulty);
@@ -435,7 +408,22 @@
       }
     }
 
+    loadSentences();
     fetchLeaderboard();
+
+    async function loadSentences(attempt = 0) {
+      try {
+        const res = await fetch('/sentences.json');
+        if (!res.ok) throw new Error('bad status ' + res.status);
+        sentencePools = await res.json();
+      } catch (err) {
+        if (attempt < 3) {
+          setTimeout(() => loadSentences(attempt + 1), 1500);
+          return;
+        }
+        console.error('Could not load sentences:', err);
+      }
+    }
   </script>
 </body>
 </html>
