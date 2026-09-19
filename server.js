@@ -9,6 +9,7 @@ const PORT = process.env.PORT || 3000;
 const MAX_SCORES = 999;
 const DATA_FILE = process.env.DB_PATH || path.join(__dirname, 'leaderboard.json');
 const LEVELS = ['easy', 'medium', 'hard', 'extreme'];
+const CLEAR_PIN = process.env.CLEAR_PIN || '160417';
 
 function load() {
   try {
@@ -90,6 +91,18 @@ app.post('/api/scores', (req, res) => {
   scores.push(row);
   save(scores);
   res.status(201).json(row);
+});
+
+// Clear the whole leaderboard — requires the correct PIN.
+app.delete('/api/scores', (req, res) => {
+  const pin = String((req.query && req.query.pin) || (req.body && req.body.pin) || '');
+  if (pin !== CLEAR_PIN) {
+    return res.status(403).json({ error: 'Incorrect PIN.' });
+  }
+  const deleted = scores.length;
+  scores = [];
+  save(scores);
+  res.json({ deleted });
 });
 
 app.listen(PORT, () => {
