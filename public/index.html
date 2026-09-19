@@ -127,6 +127,14 @@
           </tbody>
         </table>
       </div>
+      <div class="mt-3 flex items-center justify-end gap-2">
+        <label for="clear-pin" class="sr-only">PIN</label>
+        <input id="clear-pin" type="password" inputmode="numeric" placeholder="PIN" maxlength="12"
+               class="w-24 border-2 border-gray-200 rounded-lg px-2 py-1 text-sm focus:outline-none focus:border-amber-400">
+        <button id="clear-btn" onclick="clearLeaderboard()" class="px-3 py-1 text-sm rounded-lg font-semibold transition hover:opacity-90"
+                style="background: rgb(239, 68, 68); color: rgb(255, 255, 255); font-weight: 600; font-size: 14px;">Clear</button>
+      </div>
+      <p id="clear-msg" class="text-xs mt-2 text-right hidden"></p>
     </section>
   </main>
 
@@ -388,6 +396,42 @@
         msg.textContent = 'Network error \u2014 tap "Save score" to try again.';
         msg.className = 'text-sm mt-2 text-red-400';
         retry.classList.remove('hidden');
+      }
+    }
+
+    async function clearLeaderboard() {
+      const pin = document.getElementById('clear-pin').value.trim();
+      const msg = document.getElementById('clear-msg');
+      const btn = document.getElementById('clear-btn');
+      msg.classList.remove('hidden');
+      if (!pin) {
+        msg.textContent = 'Enter the PIN to clear the leaderboard.';
+        msg.className = 'text-xs mt-2 text-right text-red-400';
+        return;
+      }
+      btn.disabled = true;
+      const original = btn.textContent;
+      btn.textContent = '...';
+      try {
+        const res = await fetch(`${API}?pin=${encodeURIComponent(pin)}`, { method: 'DELETE' });
+        if (res.ok) {
+          document.getElementById('clear-pin').value = '';
+          msg.textContent = 'Leaderboard cleared.';
+          msg.className = 'text-xs mt-2 text-right text-green-400';
+          await fetchLeaderboard();
+        } else if (res.status === 403) {
+          msg.textContent = 'Incorrect PIN.';
+          msg.className = 'text-xs mt-2 text-right text-red-400';
+        } else {
+          msg.textContent = 'Could not clear the leaderboard.';
+          msg.className = 'text-xs mt-2 text-right text-red-400';
+        }
+      } catch (err) {
+        msg.textContent = 'Network error clearing the leaderboard.';
+        msg.className = 'text-xs mt-2 text-right text-red-400';
+      } finally {
+        btn.disabled = false;
+        btn.textContent = original;
       }
     }
 
