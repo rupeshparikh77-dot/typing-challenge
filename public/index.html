@@ -10,14 +10,12 @@
     body { font-family: 'DM Sans', sans-serif; }
     .mono { font-family: 'Space Mono', monospace; }
 
-    /* Sentence wraps to fit any screen width */
     #sentence-display {
       white-space: pre-wrap;
       overflow-wrap: anywhere;
       word-break: break-word;
     }
 
-    /* High-contrast typing colours on the dark card */
     .char-pending   { color: #cbd5e1; }
     .char-correct   { color: #4ade80; }
     .char-incorrect { color: #ffffff; background: #ef4444; border-radius: 3px; }
@@ -44,7 +42,40 @@
       </div>
     </section>
 
-    <section class="rounded-xl p-6 mb-6" style="background: rgb(22, 33, 62);">
+    <section id="difficulty-section" class="hidden mb-6">
+      <div class="rounded-xl p-6 text-center" style="background: rgb(22, 33, 62);">
+        <h2 class="mb-1" style="color: rgb(245, 245, 245); font-weight: 700; font-size: 22px;">Choose a difficulty</h2>
+        <p class="mb-4" style="color: rgb(161, 161, 170); font-size: 14px;">Higher levels use longer passages and harder words.</p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-lg mx-auto">
+          <button onclick="selectDifficulty('easy')" class="rounded-lg p-4 hover:opacity-90 transition text-left"
+                  style="background: #22c55e; color: #0f172a;">
+            <span style="font-size: 18px; font-weight: 700;">Easy</span><br>
+            <span style="font-size: 13px;">1 short sentence &middot; simple words</span>
+          </button>
+          <button onclick="selectDifficulty('medium')" class="rounded-lg p-4 hover:opacity-90 transition text-left"
+                  style="background: #f59e0b; color: #1a1a2e;">
+            <span style="font-size: 18px; font-weight: 700;">Medium</span><br>
+            <span style="font-size: 13px;">2 sentences &middot; everyday words</span>
+          </button>
+          <button onclick="selectDifficulty('hard')" class="rounded-lg p-4 hover:opacity-90 transition text-left"
+                  style="background: #f97316; color: #ffffff;">
+            <span style="font-size: 18px; font-weight: 700;">Hard</span><br>
+            <span style="font-size: 13px;">3 sentences &middot; tougher words</span>
+          </button>
+          <button onclick="selectDifficulty('extreme')" class="rounded-lg p-4 hover:opacity-90 transition text-left"
+                  style="background: #7c3aed; color: #ffffff;">
+            <span style="font-size: 18px; font-weight: 700;">EXTREME</span><br>
+            <span style="font-size: 13px;">1 paragraph &middot; brutal words</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <section id="typing-section" class="hidden rounded-xl p-6 mb-6" style="background: rgb(22, 33, 62);">
+      <div class="flex items-center justify-between mb-3">
+        <span class="text-sm text-gray-300">Difficulty: <span id="diff-label" class="font-semibold text-amber-400">Easy</span></span>
+        <button id="change-diff-btn" class="text-sm underline hover:opacity-80" style="color: rgb(161,161,170);" onclick="changeDifficulty()">change</button>
+      </div>
       <div id="sentence-display" class="mono text-lg leading-relaxed mb-4 min-h-[3rem]">
         <span class="text-gray-400 italic">Press Start to begin...</span>
       </div>
@@ -86,12 +117,13 @@
             <tr class="border-b border-gray-700">
               <th class="text-left px-4 py-3 font-semibold">#</th>
               <th class="text-left px-4 py-3 font-semibold">Player</th>
+              <th class="text-left px-4 py-3 font-semibold">Level</th>
               <th class="text-right px-4 py-3 font-semibold">WPM</th>
               <th class="text-right px-4 py-3 font-semibold">Accuracy</th>
             </tr>
           </thead>
           <tbody id="leaderboard-body">
-            <tr><td colspan="4" class="px-4 py-6 text-center text-gray-400">No scores yet</td></tr>
+            <tr><td colspan="5" class="px-4 py-6 text-center text-gray-400">No scores yet</td></tr>
           </tbody>
         </table>
       </div>
@@ -101,15 +133,43 @@
   <script>
     const API = '/api/scores';
 
-    const sentences = [
-      "The quick brown fox jumps over the lazy dog near the riverbank.",
-      "Practice makes perfect when you dedicate time every single day.",
-      "A journey of a thousand miles begins with a single step forward.",
-      "Technology is best when it brings people together in meaningful ways.",
-      "The only way to do great work is to love what you do each day."
+    const easySentences = [
+      "The cat sat on the soft warm mat.",
+      "A big red dog ran to the park.",
+      "We can go for a walk in the sun.",
+      "The kids like to play with the ball.",
+      "I see a bird up in the tall tree.",
+      "Mom made a cake for the party."
     ];
 
+    const mediumSentences = [
+      "The morning train was crowded with tired commuters heading downtown.",
+      "She carefully placed the fragile vase on the wooden shelf.",
+      "Our team finished the project a few days before the deadline.",
+      "The recipe called for fresh basil, garlic, and a pinch of salt.",
+      "He jogged along the river while listening to his favourite podcast.",
+      "The museum exhibit featured paintings from the early modern period."
+    ];
+
+    const hardSentences = [
+      "The ubiquitous bureaucracy exacerbated the entrepreneur's frustration considerably.",
+      "Her meticulous analysis revealed several conspicuous discrepancies in the ledger.",
+      "The philosopher articulated a nuanced argument concerning epistemological certainty.",
+      "An unprecedented confluence of circumstances precipitated the institution's collapse.",
+      "The negotiators sought a pragmatic compromise amid conflicting ideological positions.",
+      "Conscientious stewardship of finite resources necessitates rigorous long-term planning."
+    ];
+
+    const extremeParagraphs = [
+      "The indefatigable lexicographer, confronted with an antediluvian manuscript of inscrutable provenance, meticulously deciphered its labyrinthine orthography, whereupon the erstwhile incomprehensible glyphs unveiled a perspicacious treatise on the quintessential ephemerality of human endeavour.",
+      "Notwithstanding the pusillanimous vacillations of the erstwhile committee, the magnanimous benefactor promulgated an unequivocal proclamation, thereby precipitating a paradigmatic metamorphosis whose ramifications reverberated throughout the beleaguered bureaucracy.",
+      "Amidst the cacophonous kerfuffle of the interminable symposium, the sesquipedalian orator expounded upon abstruse metaphysical conundrums with such grandiloquent perspicacity that his flabbergasted interlocutors were rendered utterly nonplussed."
+    ];
+
+    const diffNames = { easy: 'Easy', medium: 'Medium', hard: 'Hard', extreme: 'EXTREME' };
+
     let playerName = '';
+    let difficulty = '';
     let currentSentence = '';
     let startTime = null;
     let timerInterval = null;
@@ -129,14 +189,62 @@
       playerName = document.getElementById('startup-name').value.trim();
       if (!playerName) return;
       document.getElementById('name-input-section').classList.add('hidden');
+      document.getElementById('difficulty-section').classList.remove('hidden');
     });
+
+    function pickOne(arr) {
+      return arr[Math.floor(Math.random() * arr.length)];
+    }
+
+    function pickSome(arr, n) {
+      const copy = arr.slice();
+      const out = [];
+      for (let i = 0; i < n && copy.length; i++) {
+        out.push(copy.splice(Math.floor(Math.random() * copy.length), 1)[0]);
+      }
+      return out;
+    }
+
+    function generateText(diff) {
+      switch (diff) {
+        case 'easy':    return pickOne(easySentences);
+        case 'medium':  return pickSome(mediumSentences, 2).join(' ');
+        case 'hard':    return pickSome(hardSentences, 3).join(' ');
+        case 'extreme': return pickOne(extremeParagraphs);
+        default:        return pickOne(easySentences);
+      }
+    }
+
+    function selectDifficulty(level) {
+      difficulty = level;
+      document.getElementById('diff-label').textContent = diffNames[level] || level;
+      document.getElementById('difficulty-section').classList.add('hidden');
+      document.getElementById('submit-section').classList.add('hidden');
+      document.getElementById('typing-section').classList.remove('hidden');
+      display.innerHTML = '<span class="text-gray-400 italic">Press Start to begin...</span>';
+    }
+
+    function changeDifficulty() {
+      if (gameActive) {
+        gameActive = false;
+        clearInterval(timerInterval);
+      }
+      input.disabled = true;
+      document.getElementById('typing-section').classList.add('hidden');
+      document.getElementById('submit-section').classList.add('hidden');
+      document.getElementById('difficulty-section').classList.remove('hidden');
+    }
 
     function startGame() {
       if (!playerName) {
         document.getElementById('name-input-section').classList.remove('hidden');
         return;
       }
-      currentSentence = sentences[Math.floor(Math.random() * sentences.length)];
+      if (!difficulty) {
+        document.getElementById('difficulty-section').classList.remove('hidden');
+        return;
+      }
+      currentSentence = generateText(difficulty);
       input.value = '';
       input.disabled = false;
       input.focus();
@@ -201,17 +309,15 @@
 
       wpmEl.textContent = lastWpm;
       accEl.textContent = lastAcc + '%';
-      document.getElementById('result-stats').textContent = `${lastWpm} WPM \u00B7 ${lastAcc}% accuracy`;
+      document.getElementById('result-stats').textContent = `${lastWpm} WPM \u00B7 ${lastAcc}% accuracy \u00B7 ${diffNames[difficulty] || difficulty}`;
       document.getElementById('submit-section').classList.remove('hidden');
 
-      // Auto-submit using the name entered at the start
       submitScore();
     }
 
     input.addEventListener('input', () => {
       if (!gameActive) return;
       renderSentence();
-      // Auto-finish once the whole sentence has been typed (reliable on mobile)
       if (input.value.length >= currentSentence.length) {
         endGame();
       }
@@ -220,7 +326,6 @@
       if (e.key === 'Enter') e.preventDefault();
     });
 
-    // ----- Leaderboard (API-backed) -----
     async function fetchLeaderboard(attempt = 0) {
       try {
         const res = await fetch(`${API}?limit=10`);
@@ -228,7 +333,6 @@
         allData = await res.json();
         renderLeaderboard();
       } catch (err) {
-        // Free hosting may be waking from sleep; wait briefly and retry.
         if (attempt < 3) {
           setTimeout(() => fetchLeaderboard(attempt + 1), 1500);
           return;
@@ -242,20 +346,22 @@
     function renderLeaderboard() {
       const tbody = document.getElementById('leaderboard-body');
       if (!allData.length) {
-        tbody.innerHTML = '<tr><td colspan="4" class="px-4 py-6 text-center text-gray-400">No scores yet</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-6 text-center text-gray-400">No scores yet</td></tr>';
         return;
       }
-      tbody.innerHTML = allData.map((r, i) => `
+      tbody.innerHTML = allData.map((r, i) => {
+        const level = { easy: 'Easy', medium: 'Medium', hard: 'Hard', extreme: 'EXTREME' }[r.difficulty] || '\u2014';
+        return `
         <tr class="border-b border-gray-700">
           <td class="px-4 py-2 font-medium">${i + 1}</td>
           <td class="px-4 py-2">${escapeHtml(r.player_name || 'Anon')}</td>
+          <td class="px-4 py-2">${level}</td>
           <td class="px-4 py-2 text-right font-bold mono">${r.wpm}</td>
           <td class="px-4 py-2 text-right">${r.accuracy}%</td>
-        </tr>
-      `).join('');
+        </tr>`;
+      }).join('');
     }
 
-    // Auto-submit; the "Save score" button re-runs this if a save fails.
     async function submitScore() {
       const msg = document.getElementById('submit-msg');
       const retry = document.getElementById('retry-btn');
@@ -266,7 +372,7 @@
         const res = await fetch(API, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ player_name: playerName || 'Anon', wpm: lastWpm, accuracy: lastAcc })
+          body: JSON.stringify({ player_name: playerName || 'Anon', wpm: lastWpm, accuracy: lastAcc, difficulty: difficulty })
         });
         const data = await res.json().catch(() => ({}));
         if (res.ok) {
