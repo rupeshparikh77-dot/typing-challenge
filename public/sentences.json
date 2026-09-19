@@ -1,0 +1,31 @@
+{
+  "easy": [
+    "The cat sat on the soft warm mat.",
+    "A big red dog ran to the park.",
+    "We can go for a walk in the sun.",
+    "The kids like to play with the ball.",
+    "I see a bird up in the tall tree.",
+    "Mom made a cake for the party."
+  ],
+  "medium": [
+    "The morning train was crowded with tired commuters heading downtown.",
+    "She carefully placed the fragile vase on the wooden shelf.",
+    "Our team finished the project a few days before the deadline.",
+    "The recipe called for fresh basil, garlic, and a pinch of salt.",
+    "He jogged along the river while listening to his favourite podcast.",
+    "The museum exhibit featured paintings from the early modern period."
+  ],
+  "hard": [
+    "The ubiquitous bureaucracy exacerbated the entrepreneur's frustration considerably.",
+    "Her meticulous analysis revealed several conspicuous discrepancies in the ledger.",
+    "The philosopher articulated a nuanced argument concerning epistemological certainty.",
+    "An unprecedented confluence of circumstances precipitated the institution's collapse.",
+    "The negotiators sought a pragmatic compromise amid conflicting ideological positions.",
+    "Conscientious stewardship of finite resources necessitates rigorous long-term planning."
+  ],
+  "extreme": [
+    "The indefatigable lexicographer, confronted with an antediluvian manuscript of inscrutable provenance, meticulously deciphered its labyrinthine orthography, whereupon the erstwhile incomprehensible glyphs unveiled a perspicacious treatise on the quintessential ephemerality of human endeavour.",
+    "Notwithstanding the pusillanimous vacillations of the erstwhile committee, the magnanimous benefactor promulgated an unequivocal proclamation, thereby precipitating a paradigmatic metamorphosis whose ramifications reverberated throughout the beleaguered bureaucracy.",
+    "Amidst the cacophonous kerfuffle of the interminable symposium, the sesquipedalian orator expounded upon abstruse metaphysical conundrums with such grandiloquent perspicacity that his flabbergasted interlocutors were rendered utterly nonplussed."
+  ]
+}
