@@ -8,6 +8,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const MAX_SCORES = 999;
 const DATA_FILE = process.env.DB_PATH || path.join(__dirname, 'leaderboard.json');
+const LEVELS = ['easy', 'medium', 'hard', 'extreme'];
 
 function load() {
   try {
@@ -45,9 +46,12 @@ function validateScore(body = {}) {
   const accuracy = Number(body.accuracy);
   if (!Number.isFinite(accuracy) || accuracy < 0 || accuracy > 100) errors.push('accuracy must be a number between 0 and 100');
 
+  let difficulty = typeof body.difficulty === 'string' ? body.difficulty.trim().toLowerCase() : '';
+  if (!LEVELS.includes(difficulty)) difficulty = '';
+
   return {
     errors,
-    value: { player_name, wpm: Math.round(wpm), accuracy: Math.round(accuracy) },
+    value: { player_name, wpm: Math.round(wpm), accuracy: Math.round(accuracy), difficulty },
   };
 }
 
@@ -80,28 +84,12 @@ app.post('/api/scores', (req, res) => {
     player_name: value.player_name,
     wpm: value.wpm,
     accuracy: value.accuracy,
+    difficulty: value.difficulty,
     created_at: new Date().toISOString(),
   };
   scores.push(row);
   save(scores);
   res.status(201).json(row);
-});
-
-app.delete('/api/scores/:id', (req, res) => {
-  const id = parseInt(req.params.id, 10);
-  if (!Number.isInteger(id)) return res.status(400).json({ error: 'invalid id' });
-  const before = scores.length;
-  scores = scores.filter((r) => r.id !== id);
-  if (scores.length === before) return res.status(404).json({ error: 'Score not found' });
-  save(scores);
-  res.json({ deleted: before - scores.length });
-});
-
-app.delete('/api/scores', (req, res) => {
-  const deleted = scores.length;
-  scores = [];
-  save(scores);
-  res.json({ deleted });
 });
 
 app.listen(PORT, () => {
