@@ -121,7 +121,9 @@
           <button onclick="closeCoach()" class="text-sm underline hover:opacity-80" style="color: rgb(161,161,170);">close</button>
         </div>
         <div id="coach-body" class="text-gray-200 text-sm"></div>
-        <div class="mt-4">
+        <div class="mt-4 flex flex-wrap gap-2">
+          <button id="coach-benchmark-btn" onclick="startBenchmark()" class="px-4 py-2 rounded-lg font-semibold hover:opacity-90"
+                  style="background: #22c55e; color: #0f172a; font-weight: 600; font-size: 15px;">Take the progress test</button>
           <button id="coach-practice-btn" onclick="practiceTroubleKeys()" class="hidden px-4 py-2 rounded-lg font-semibold hover:opacity-90"
                   style="background: #7c3aed; color: #ffffff; font-weight: 600; font-size: 15px;">Practice these keys</button>
         </div>
@@ -176,6 +178,9 @@
     let lastAcc = 0;
     let lastErrors = {};
     let practiceMode = false;
+    let benchmarkMode = false;
+    let acceptedValue = '';
+    const DEFAULT_BENCHMARK = 'A good typing test measures both your speed and your accuracy over a steady passage of text.';
 
     const input = document.getElementById('type-input');
     const display = document.getElementById('sentence-display');
@@ -248,6 +253,8 @@
       }
       currentSentence = generateText(difficulty);
       practiceMode = false;
+      benchmarkMode = false;
+      acceptedValue = '';
       input.value = '';
       input.disabled = false;
       input.focus();
@@ -320,6 +327,12 @@
       accEl.textContent = lastAcc + '%';
       document.getElementById('submit-section').classList.remove('hidden');
 
+      if (benchmarkMode) {
+        benchmarkMode = false;
+        showBenchmarkResult(lastWpm, lastAcc);
+        return;
+      }
+
       if (practiceMode) {
         practiceMode = false;
         document.getElementById('result-stats').textContent = `${lastWpm} WPM \u00B7 ${lastAcc}% accuracy \u00B7 practice`;
@@ -335,7 +348,15 @@
     }
 
     input.addEventListener('input', () => {
-      if (!gameActive) return;
+      if (!gameActive) { acceptedValue = input.value; return; }
+      const v = input.value;
+      // No deleting: the typed text may only grow, never shrink or change earlier characters
+      if (v.length < acceptedValue.length || !v.startsWith(acceptedValue)) {
+        input.value = acceptedValue;
+        try { input.setSelectionRange(acceptedValue.length, acceptedValue.length); } catch (e) {}
+        return;
+      }
+      acceptedValue = v;
       renderSentence();
       if (input.value.length >= currentSentence.length) {
         endGame();
@@ -343,6 +364,7 @@
     });
     input.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') e.preventDefault();
+      if (gameActive && (e.key === 'Backspace' || e.key === 'Delete')) e.preventDefault();
     });
 
     async function fetchLeaderboard(attempt = 0) {
@@ -498,9 +520,29 @@
       } else {
         practiceBtn.classList.add('hidden');
       }
+      html += '<p id="coach-bench-line" class="mt-3 text-sm text-gray-400">Loading your last progress test\u2026</p>';
       body.innerHTML = html;
       document.getElementById('coach-section').classList.remove('hidden');
       document.getElementById('coach-section').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      loadBenchmarkInfo();
+    }
+
+    async function loadBenchmarkInfo() {
+      const el = document.getElementById('coach-bench-line');
+      if (!el) return;
+      try {
+        const res = await fetch('/api/benchmark?player=' + encodeURIComponent(playerName || 'Anon'));
+        const b = await res.json().catch(() => null);
+        if (b && typeof b.wpm === 'number') {
+          el.innerHTML = `Last progress test: <span class="font-semibold text-amber-400">${b.wpm} WPM \u00B7 ${b.accuracy}%</span>`;
+          el.className = 'mt-3 text-sm';
+        } else {
+          el.textContent = 'No progress test yet \u2014 take one below to set your baseline.';
+          el.className = 'mt-3 text-sm text-gray-400';
+        }
+      } catch (e) {
+        el.textContent = '';
+      }
     }
 
     function closeCoach() {
@@ -511,12 +553,15 @@
       const letters = keys.filter(k => /[a-z]/i.test(k)).map(k => k.toLowerCase());
       const words = [];
       if (sentencePools) {
-        Object.values(sentencePools).forEach(arr => arr.forEach(s => {
-          s.split(/\s+/).forEach(w => {
-            const clean = w.replace(/[^a-zA-Z]/g, '').toLowerCase();
-            if (clean.length > 1) words.push(clean);
+        Object.values(sentencePools).forEach(v => {
+          const arr = Array.isArray(v) ? v : [v];
+          arr.forEach(s => {
+            String(s).split(/\s+/).forEach(w => {
+              const clean = w.replace(/[^a-zA-Z]/g, '').toLowerCase();
+              if (clean.length > 1) words.push(clean);
+            });
           });
-        }));
+        });
       }
       let candidates = letters.length ? words.filter(w => letters.some(l => w.includes(l))) : words;
       if (!candidates.length) candidates = words;
@@ -529,12 +574,68 @@
       startDrill(buildDrill(Object.keys(lastErrors)));
     }
 
+    function startBenchmark() {
+      const b = (sentencePools && sentencePools.benchmark) || DEFAULT_BENCHMARK;
+      const text = Array.isArray(b) ? b[0] : b;
+      closeCoach();
+      document.getElementById('typing-section').classList.remove('hidden');
+      document.getElementById('submit-section').classList.add('hidden');
+      document.getElementById('diff-label').textContent = 'Progress Test';
+      currentSentence = text;
+      benchmarkMode = true;
+      practiceMode = false;
+      acceptedValue = '';
+      input.value = '';
+      input.disabled = false;
+      input.focus();
+      gameActive = true;
+      startTime = Date.now();
+      document.getElementById('start-btn').classList.add('hidden');
+      document.getElementById('finish-btn').classList.remove('hidden');
+      renderSentence();
+      timerInterval = setInterval(updateTimer, 100);
+    }
+
+    async function showBenchmarkResult(wpm, acc) {
+      document.getElementById('retry-btn').classList.add('hidden');
+      document.getElementById('result-stats').textContent = `${wpm} WPM \u00B7 ${acc}% accuracy \u00B7 progress test`;
+      const msg = document.getElementById('submit-msg');
+      msg.className = 'text-sm mt-2 text-gray-200';
+      msg.textContent = 'Saving your progress\u2026';
+      try {
+        const res = await fetch('/api/benchmark', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ player_name: playerName || 'Anon', wpm: wpm, accuracy: acc })
+        });
+        const data = await res.json().catch(() => ({}));
+        const prev = data && data.previous;
+        if (prev) {
+          const dW = wpm - prev.wpm;
+          const dA = acc - prev.accuracy;
+          const wStr = dW === 0 ? 'the same speed' : (dW > 0 ? `+${dW} WPM faster` : `${dW} WPM slower`);
+          const aStr = dA === 0 ? 'the same accuracy' : (dA > 0 ? `+${dA}% more accurate` : `${dA}% less accurate`);
+          msg.textContent = `vs your last test (${prev.wpm} WPM, ${prev.accuracy}%): ${wStr}, ${aStr}.`;
+        } else if (res.ok) {
+          msg.textContent = 'Saved as your baseline \u2014 take this test again later, on any device, to see your improvement.';
+        } else {
+          msg.textContent = (data && data.error) || 'Could not save your progress this time.';
+          msg.className = 'text-sm mt-2 text-red-400';
+        }
+      } catch (e) {
+        msg.textContent = 'Network error saving your progress.';
+        msg.className = 'text-sm mt-2 text-red-400';
+      }
+    }
+
     function startDrill(text) {
       closeCoach();
       document.getElementById('typing-section').classList.remove('hidden');
       document.getElementById('submit-section').classList.add('hidden');
       currentSentence = text;
       practiceMode = true;
+      benchmarkMode = false;
+      acceptedValue = '';
       input.value = '';
       input.disabled = false;
       input.focus();
