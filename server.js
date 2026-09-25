@@ -8,28 +8,32 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const MAX_SCORES = 999;
 const DATA_FILE = process.env.DB_PATH || path.join(__dirname, 'leaderboard.json');
+const BENCH_FILE = process.env.BENCH_PATH || path.join(path.dirname(DATA_FILE), 'benchmarks.json');
 const LEVELS = ['easy', 'medium', 'hard', 'extreme'];
 const CLEAR_PIN = process.env.CLEAR_PIN || '160417';
 
-function load() {
+function readJson(file, fallback) {
   try {
-    const parsed = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
-    return Array.isArray(parsed) ? parsed : [];
+    const parsed = JSON.parse(fs.readFileSync(file, 'utf8'));
+    return parsed;
   } catch {
-    return [];
+    return fallback;
   }
 }
 
-function save(rows) {
+function writeJson(file, data) {
   try {
-    fs.writeFileSync(DATA_FILE, JSON.stringify(rows));
+    fs.writeFileSync(file, JSON.stringify(data));
   } catch (e) {
-    console.error('Failed to write data file:', e.message);
+    console.error('Failed to write ' + file + ':', e.message);
   }
 }
 
-let scores = load();
+let scores = Array.isArray(readJson(DATA_FILE, [])) ? readJson(DATA_FILE, []) : [];
 let nextId = scores.reduce((max, r) => Math.max(max, r.id || 0), 0) + 1;
+
+let benchmarks = readJson(BENCH_FILE, {});
+if (!benchmarks || typeof benchmarks !== 'object' || Array.isArray(benchmarks)) benchmarks = {};
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
@@ -89,11 +93,10 @@ app.post('/api/scores', (req, res) => {
     created_at: new Date().toISOString(),
   };
   scores.push(row);
-  save(scores);
+  writeJson(DATA_FILE, scores);
   res.status(201).json(row);
 });
 
-// Clear the whole leaderboard — requires the correct PIN.
 app.delete('/api/scores', (req, res) => {
   const pin = String((req.query && req.query.pin) || (req.body && req.body.pin) || '');
   if (pin !== CLEAR_PIN) {
@@ -101,8 +104,34 @@ app.delete('/api/scores', (req, res) => {
   }
   const deleted = scores.length;
   scores = [];
-  save(scores);
+  writeJson(DATA_FILE, scores);
   res.json({ deleted });
+});
+
+// ---- Progress test (per-player benchmark, follows the player across devices) ----
+
+app.get('/api/benchmark', (req, res) => {
+  const key = String((req.query && req.query.player) || '').trim().toLowerCase();
+  if (!key) return res.status(400).json({ error: 'player is required' });
+  res.json(benchmarks[key] || null);
+});
+
+app.post('/api/benchmark', (req, res) => {
+  const b = req.body || {};
+  const player_name = typeof b.player_name === 'string' ? b.player_name.trim() : '';
+  if (!player_name) return res.status(400).json({ error: 'player_name is required' });
+
+  const wpm = Number(b.wpm);
+  if (!Number.isFinite(wpm) || wpm < 0 || wpm > 400) return res.status(400).json({ error: 'wpm must be between 0 and 400' });
+  const accuracy = Number(b.accuracy);
+  if (!Number.isFinite(accuracy) || accuracy < 0 || accuracy > 100) return res.status(400).json({ error: 'accuracy must be between 0 and 100' });
+
+  const key = player_name.toLowerCase();
+  const previous = benchmarks[key] || null;
+  const current = { player_name, wpm: Math.round(wpm), accuracy: Math.round(accuracy), at: new Date().toISOString() };
+  benchmarks[key] = current;
+  writeJson(BENCH_FILE, benchmarks);
+  res.json({ previous, current });
 });
 
 app.listen(PORT, () => {
