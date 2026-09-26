@@ -1,28 +1,24 @@
-    <section class="mt-6">
-      <h2 class="mb-3" style="color: rgb(245, 245, 245); font-weight: 700; font-size: 20px;">Feedback</h2>
-      <div class="rounded-xl p-6" style="background: rgb(22, 33, 62);">
-        <p class="text-sm text-gray-300 mb-3">Have a suggestion or found a bug? Tell us &mdash; it goes straight to the owner.</p>
-        <label for="feedback-text" class="sr-only">Your feedback</label>
-        <textarea id="feedback-text" rows="3" maxlength="1000" placeholder="Your feedback..."
-                  class="w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-400" style="resize: none;"></textarea>
-        <div class="flex justify-end mt-2">
-          <button id="feedback-send" onclick="sendFeedback()" class="px-4 py-2 rounded-lg font-semibold hover:opacity-90"
-                  style="background: #f59e0b; color: #1a1a2e; font-weight: 600; font-size: 15px;">Send feedback</button>
+    <section style="margin-top: 24px;">
+      <h2 style="color: rgb(245, 245, 245); font-weight: 700; font-size: 20px; margin-bottom: 12px;">Feedback</h2>
+      <div style="background: rgb(22, 33, 62); border-radius: 12px; padding: 24px;">
+        <p style="color: #cbd5e1; font-size: 14px; margin-bottom: 12px;">Have a suggestion or found a bug? Tell us &mdash; it goes straight to the owner.</p>
+        <textarea id="feedback-text" rows="3" maxlength="1000" placeholder="Your feedback..." aria-label="Your feedback"
+                  style="width: 100%; box-sizing: border-box; border: 2px solid #e5e7eb; border-radius: 8px; padding: 8px 12px; font-size: 14px; resize: none; font-family: inherit;"></textarea>
+        <div style="display: flex; justify-content: flex-end; margin-top: 8px;">
+          <button id="feedback-send" onclick="sendFeedback()"
+                  style="background: #f59e0b; color: #1a1a2e; font-weight: 600; font-size: 15px; padding: 8px 16px; border-radius: 8px; border: none; cursor: pointer;">Send feedback</button>
         </div>
-        <p id="feedback-msg" class="text-sm mt-2 hidden"></p>
+        <p id="feedback-msg" style="font-size: 14px; margin-top: 8px; display: none;"></p>
 
-        <div class="mt-5 pt-4 border-t border-gray-700">
-          <p class="text-xs text-gray-400 mb-2">Owner: enter the PIN to read submitted feedback.</p>
-          <div class="flex items-center gap-2">
-            <label for="feedback-pin" class="sr-only">Owner PIN</label>
-            <input id="feedback-pin" type="password" inputmode="numeric" placeholder="PIN" maxlength="12"
-                   class="w-24 border-2 border-gray-200 rounded-lg px-2 py-1 text-sm focus:outline-none focus:border-amber-400">
-            <button onclick="loadFeedback()" class="px-3 py-1 text-sm rounded-lg font-semibold hover:opacity-90"
-                    style="background: #22c55e; color: #0f172a; font-weight: 600;">View</button>
-            <button onclick="clearFeedback()" class="px-3 py-1 text-sm rounded-lg font-semibold hover:opacity-90"
-                    style="background: #ef4444; color: #ffffff; font-weight: 600;">Clear</button>
+        <div style="margin-top: 20px; padding-top: 16px; border-top: 1px solid #374151;">
+          <p style="color: #9ca3af; font-size: 12px; margin-bottom: 8px;">Owner: enter the PIN to read submitted feedback.</p>
+          <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+            <input id="feedback-pin" type="password" inputmode="numeric" placeholder="PIN" maxlength="12" aria-label="Owner PIN"
+                   style="width: 96px; border: 2px solid #e5e7eb; border-radius: 8px; padding: 4px 8px; font-size: 14px;">
+            <button onclick="loadFeedback()" style="background: #22c55e; color: #0f172a; font-weight: 600; font-size: 14px; padding: 4px 12px; border-radius: 8px; border: none; cursor: pointer;">View</button>
+            <button onclick="clearFeedback()" style="background: #ef4444; color: #ffffff; font-weight: 600; font-size: 14px; padding: 4px 12px; border-radius: 8px; border: none; cursor: pointer;">Clear</button>
           </div>
-          <div id="feedback-list" class="mt-3 text-sm text-gray-200"></div>
+          <div id="feedback-list" style="margin-top: 12px; font-size: 14px; color: #e5e7eb;"></div>
         </div>
       </div>
     </section>
