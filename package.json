@@ -1,0 +1,17 @@
+{
+  "name": "speed-typing-challenge",
+  "version": "1.0.0",
+  "description": "Speed Typing Challenge with a REST API leaderboard, difficulty levels, typing coach, progress test, and feedback hub",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}
