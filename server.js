@@ -9,6 +9,7 @@ const PORT = process.env.PORT || 3000;
 const MAX_SCORES = 999;
 const DATA_FILE = process.env.DB_PATH || path.join(__dirname, 'leaderboard.json');
 const BENCH_FILE = process.env.BENCH_PATH || path.join(path.dirname(DATA_FILE), 'benchmarks.json');
+const FEEDBACK_FILE = process.env.FEEDBACK_PATH || path.join(path.dirname(DATA_FILE), 'feedback.json');
 const LEVELS = ['easy', 'medium', 'hard', 'extreme'];
 const CLEAR_PIN = process.env.CLEAR_PIN || '160417';
 
@@ -34,6 +35,10 @@ let nextId = scores.reduce((max, r) => Math.max(max, r.id || 0), 0) + 1;
 
 let benchmarks = readJson(BENCH_FILE, {});
 if (!benchmarks || typeof benchmarks !== 'object' || Array.isArray(benchmarks)) benchmarks = {};
+
+let feedback = readJson(FEEDBACK_FILE, []);
+if (!Array.isArray(feedback)) feedback = [];
+let nextFeedbackId = feedback.reduce((m, f) => Math.max(m, f.id || 0), 0) + 1;
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
@@ -132,6 +137,36 @@ app.post('/api/benchmark', (req, res) => {
   benchmarks[key] = current;
   writeJson(BENCH_FILE, benchmarks);
   res.json({ previous, current });
+});
+
+// ---- Feedback hub ----
+
+app.post('/api/feedback', (req, res) => {
+  const b = req.body || {};
+  const message = typeof b.message === 'string' ? b.message.trim() : '';
+  const name = typeof b.name === 'string' ? b.name.trim().slice(0, 40) : '';
+  if (!message) return res.status(400).json({ error: 'message is required' });
+  if (message.length > 1000) return res.status(400).json({ error: 'message too long (1000 characters max)' });
+  if (feedback.length >= 5000) return res.status(409).json({ error: 'feedback storage is full' });
+  const row = { id: nextFeedbackId++, name, message, at: new Date().toISOString() };
+  feedback.push(row);
+  writeJson(FEEDBACK_FILE, feedback);
+  res.status(201).json({ ok: true });
+});
+
+app.get('/api/feedback', (req, res) => {
+  const pin = String((req.query && req.query.pin) || '');
+  if (pin !== CLEAR_PIN) return res.status(403).json({ error: 'Incorrect PIN.' });
+  res.json([...feedback].sort((a, b) => String(b.at).localeCompare(String(a.at))));
+});
+
+app.delete('/api/feedback', (req, res) => {
+  const pin = String((req.query && req.query.pin) || (req.body && req.body.pin) || '');
+  if (pin !== CLEAR_PIN) return res.status(403).json({ error: 'Incorrect PIN.' });
+  const deleted = feedback.length;
+  feedback = [];
+  writeJson(FEEDBACK_FILE, feedback);
+  res.json({ deleted });
 });
 
 app.listen(PORT, () => {
