@@ -1,0 +1,855 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Speed Typing Challenge</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: 'DM Sans', sans-serif; margin: 0; min-height: 100vh; padding: 16px; background: #1a1a2e; color: #e5e7eb; }
+    .wrap { max-width: 760px; margin: 0 auto; }
+    .mono { font-family: 'Space Mono', monospace; }
+    .card { background: #16213e; border-radius: 12px; padding: 24px; margin-bottom: 20px; }
+    h1 { color: #f5f5f5; font-weight: 700; font-size: 30px; margin: 0; }
+    h2 { color: #f5f5f5; font-weight: 700; font-size: 20px; margin: 0 0 12px 0; }
+    .sub { color: #a1a1aa; font-size: 15px; margin-top: 6px; }
+    input, textarea { border: 2px solid #e5e7eb; border-radius: 8px; padding: 8px 12px; font-size: 15px; font-family: inherit; }
+    input:focus, textarea:focus { outline: none; border-color: #f59e0b; }
+    .btn { border: none; border-radius: 8px; padding: 8px 16px; font-weight: 600; font-size: 15px; cursor: pointer; }
+    .btn:hover { opacity: 0.9; }
+    .amber { background: #f59e0b; color: #1a1a2e; }
+    .green { background: #22c55e; color: #0f172a; }
+    .red { background: #ef4444; color: #fff; }
+    .purple { background: #7c3aed; color: #fff; }
+    .slate { background: #334155; color: #fff; }
+    #sentence-display { white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; }
+    .char-pending { color: #cbd5e1; }
+    .char-correct { color: #4ade80; }
+    .char-incorrect { color: #fff; background: #ef4444; border-radius: 3px; }
+    .char-current { background: #f59e0b; color: #1a1a2e; border-radius: 3px; }
+    .icon-btn { position: relative; background: #0f172a; border: none; border-radius: 10px; width: 44px; height: 44px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+    .icon-btn:hover { background: #243049; }
+    .badge { position: absolute; top: -6px; right: -6px; background: #ef4444; color: #fff; border-radius: 999px; min-width: 18px; height: 18px; font-size: 11px; font-weight: 700; display: none; align-items: center; justify-content: center; padding: 0 4px; }
+    .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center; padding: 16px; z-index: 50; }
+    .overlay .box { background: #16213e; border-radius: 16px; padding: 28px; max-width: 420px; width: 100%; text-align: center; }
+    .lb-name { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border-bottom: 1px solid #374151; cursor: pointer; }
+    .lb-name:hover { background: #1b2a4a; }
+    .msg-row { margin-bottom: 8px; }
+    .bubble { border-radius: 8px; padding: 8px 12px; display: inline-block; max-width: 100%; overflow-wrap: anywhere; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header style="text-align:center; margin-bottom:20px;">
+      <h1>Speed Typing Challenge</h1>
+      <p class="sub">Type fast. Type accurate. Climb the leaderboard.</p>
+    </header>
+
+    <!-- NAME GATE: nothing else shows until this is done -->
+    <section id="name-section" class="card" style="text-align:center;">
+      <h2 style="text-align:center;">Enter your name</h2>
+      <p class="sub" style="margin-bottom:14px;">New here? Enter your first (and last) name. Coming back? Just your first name works.</p>
+      <form id="name-form" style="display:flex; flex-wrap:wrap; gap:8px; max-width:480px; margin:0 auto; justify-content:center;">
+        <input id="startup-first" type="text" placeholder="First name" aria-label="First name" maxlength="40" required style="flex:1; min-width:140px;">
+        <input id="startup-last" type="text" placeholder="Last name (optional)" aria-label="Last name" maxlength="40" style="flex:1; min-width:140px;">
+        <button type="submit" class="btn amber">Continue</button>
+      </form>
+      <p id="name-hint" style="color:#f87171; font-size:14px; margin-top:12px; display:none;"></p>
+    </section>
+
+    <!-- THE APP: hidden until a name is entered -->
+    <div id="app" style="display:none;">
+
+      <!-- Header bar with icons -->
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; gap:10px;">
+        <div style="color:#cbd5e1; font-size:14px;">Playing as <span id="who" style="color:#f59e0b; font-weight:700;"></span></div>
+        <div style="display:flex; gap:10px;">
+          <button id="chat-icon" class="icon-btn" title="Messages" onclick="toggleChat()">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f5f5f5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            <span id="chat-badge" class="badge">0</span>
+          </button>
+          <button id="friend-icon" class="icon-btn" title="Challenge a friend" onclick="toggleFriend()">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f5f5f5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Pending battle banner -->
+      <div id="battle-banner" style="display:none; background:#7c3aed; color:#fff; border-radius:12px; padding:12px 16px; margin-bottom:16px; font-weight:600;">
+        <span id="battle-banner-text"></span>
+        <button onclick="acceptPendingBattle()" class="btn" style="background:#0f172a; color:#fff; margin-left:12px;">Play now</button>
+      </div>
+
+      <!-- HOME VIEW -->
+      <div id="home-view">
+        <!-- Difficulty -->
+        <section id="difficulty-section" class="card" style="text-align:center;">
+          <h2 style="text-align:center;">Choose a difficulty</h2>
+          <p class="sub" style="margin-bottom:16px;">Higher levels use longer passages and harder words.</p>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; max-width:520px; margin:0 auto;">
+            <button class="btn" style="background:#22c55e; color:#0f172a; text-align:left; padding:16px;" onclick="selectDifficulty('easy')"><span style="font-size:18px;font-weight:700;">Easy</span><br><span style="font-size:13px;">1 short sentence &middot; simple words</span></button>
+            <button class="btn" style="background:#f59e0b; color:#1a1a2e; text-align:left; padding:16px;" onclick="selectDifficulty('medium')"><span style="font-size:18px;font-weight:700;">Medium</span><br><span style="font-size:13px;">2 sentences &middot; everyday words</span></button>
+            <button class="btn" style="background:#f97316; color:#fff; text-align:left; padding:16px;" onclick="selectDifficulty('hard')"><span style="font-size:18px;font-weight:700;">Hard</span><br><span style="font-size:13px;">3 sentences &middot; tougher words</span></button>
+            <button class="btn" style="background:#7c3aed; color:#fff; text-align:left; padding:16px;" onclick="selectDifficulty('extreme')"><span style="font-size:18px;font-weight:700;">EXTREME</span><br><span style="font-size:13px;">1 paragraph &middot; brutal words</span></button>
+          </div>
+        </section>
+
+        <!-- Typing (also used for battle rounds) -->
+        <section id="typing-section" class="card" style="display:none;">
+          <div id="diff-row" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <span style="font-size:14px; color:#cbd5e1;">Difficulty: <span id="diff-label" style="color:#f59e0b; font-weight:700;">Easy</span></span>
+            <div style="display:flex; gap:14px;">
+              <button class="btn" style="background:none; color:#f59e0b; text-decoration:underline; padding:0;" onclick="openCoach()">Coach</button>
+              <button class="btn" style="background:none; color:#a1a1aa; text-decoration:underline; padding:0;" onclick="changeDifficulty()">change</button>
+            </div>
+          </div>
+          <div id="battle-head" style="display:none; margin-bottom:12px; color:#c4b5fd; font-weight:700;"></div>
+          <div id="sentence-display" class="mono" style="font-size:18px; line-height:1.7; margin-bottom:16px; min-height:3rem;"><span style="color:#9ca3af; font-style:italic;">Press Start to begin...</span></div>
+          <textarea id="type-input" rows="3" style="width:100%; resize:none;" disabled autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
+          <div style="display:flex; flex-wrap:wrap; justify-content:space-between; gap:12px; margin-top:16px; align-items:center;">
+            <div style="display:flex; flex-wrap:wrap; gap:16px; font-size:14px;">
+              <span>&#9201; <span id="timer">0.0s</span></span>
+              <span>WPM: <span id="wpm-display">0</span></span>
+              <span>Acc: <span id="acc-display">100%</span></span>
+            </div>
+            <div style="display:flex; gap:8px;">
+              <button id="start-btn" class="btn amber" onclick="startGame()">Start</button>
+              <button id="finish-btn" class="btn amber" style="display:none;" onclick="endGame()">Finish</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- Result -->
+        <section id="submit-section" class="card" style="display:none; text-align:center;">
+          <h2 style="text-align:center;">Nice work!</h2>
+          <p id="result-stats" class="mono" style="font-size:22px; font-weight:700; color:#f59e0b; margin:6px 0;"></p>
+          <p id="submit-msg" style="font-size:14px; margin-top:8px;"></p>
+          <div style="margin-top:12px; display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
+            <button id="retry-btn" class="btn green" style="display:none;" onclick="submitScore()">Save score</button>
+            <button class="btn amber" onclick="openCoach()">Coach me</button>
+          </div>
+        </section>
+
+        <!-- Coach -->
+        <section id="coach-section" class="card" style="display:none;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <h2 style="margin:0;">Typing Coach</h2>
+            <button class="btn" style="background:none; color:#a1a1aa; text-decoration:underline; padding:0;" onclick="closeCoach()">close</button>
+          </div>
+          <div id="coach-body" style="font-size:14px;"></div>
+          <div style="margin-top:14px; display:flex; flex-wrap:wrap; gap:8px;">
+            <button class="btn green" onclick="startBenchmark()">Take the progress test</button>
+            <button id="coach-practice-btn" class="btn purple" style="display:none;" onclick="practiceTroubleKeys()">Practice these keys</button>
+          </div>
+        </section>
+
+        <!-- Leaderboard: names only, click a name to expand all tries -->
+        <section class="card" style="padding:0; overflow:hidden;">
+          <div style="padding:16px 16px 0 16px;"><h2>Leaderboard</h2>
+            <p class="sub" style="margin-bottom:10px;">Tap a name to see all their tries.</p>
+          </div>
+          <div id="leaderboard-body"><div style="padding:16px; color:#9ca3af;">No scores yet</div></div>
+          <div style="padding:12px 16px; border-top:1px solid #374151; display:flex; gap:8px; align-items:center; justify-content:flex-end;">
+            <input id="lb-pin" type="password" inputmode="numeric" placeholder="Owner PIN" maxlength="12" style="width:110px;">
+            <button class="btn red" style="padding:4px 12px; font-size:13px;" onclick="clearLeaderboard()">Clear</button>
+          </div>
+          <p id="lb-msg" style="font-size:12px; text-align:right; padding:0 16px 12px; display:none;"></p>
+        </section>
+      </div>
+
+      <!-- CHAT PANEL -->
+      <section id="chat-panel" class="card" style="display:none;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <h2 style="margin:0;" id="chat-title">Messages</h2>
+          <button class="btn" style="background:none; color:#a1a1aa; text-decoration:underline; padding:0;" onclick="toggleChat()">close</button>
+        </div>
+
+        <!-- Non-owner: chat with the owner -->
+        <div id="chat-user">
+          <p class="sub" id="chat-user-sub" style="margin-bottom:12px;">Chat privately with the owner (Rishi Parikh).</p>
+          <div id="email-prompt" style="display:none; background:#0f172a; border-radius:10px; padding:12px; margin-bottom:12px;">
+            <p style="font-size:13px; color:#cbd5e1; margin:0 0 8px;">Optional: add your email to get notified of replies and to receive battle invites.</p>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <input id="email-input" type="email" placeholder="you@example.com" style="flex:1; min-width:160px;">
+              <button class="btn green" onclick="saveEmail()">Save</button>
+              <button class="btn slate" onclick="dismissEmailPrompt()">Not now</button>
+            </div>
+            <p id="email-msg" style="font-size:12px; margin:8px 0 0; display:none;"></p>
+          </div>
+          <div id="chat-thread" style="font-size:14px; max-height:300px; overflow-y:auto;"></div>
+          <div style="display:flex; gap:8px; margin-top:12px;">
+            <input id="chat-input" type="text" maxlength="1000" placeholder="Write a message..." style="flex:1;">
+            <button class="btn amber" onclick="sendChat()">Send</button>
+          </div>
+          <div style="margin-top:14px; padding-top:12px; border-top:1px solid #243049;">
+            <p style="font-size:12px; color:#9ca3af; margin:0 0 6px;">Are you the owner but using a different name? Enter the PIN to open the owner console.</p>
+            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+              <input id="owner-login-pin" type="password" inputmode="numeric" placeholder="Owner PIN" maxlength="12" style="width:120px;">
+              <button class="btn slate" onclick="unlockOwner()">Unlock</button>
+              <span id="owner-login-msg" style="font-size:12px;"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Owner console (no PIN needed when logged in as the owner) -->
+        <div id="chat-owner" style="display:none;">
+          <p class="sub" style="margin-bottom:10px;">Owner console &mdash; messages from players.</p>
+          <div id="owner-threads" style="font-size:14px;"></div>
+        </div>
+      </section>
+
+      <!-- FRIEND / BATTLE PANEL -->
+      <section id="friend-panel" class="card" style="display:none;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <h2 style="margin:0;">Challenge a friend</h2>
+          <button class="btn" style="background:none; color:#a1a1aa; text-decoration:underline; padding:0;" onclick="toggleFriend()">close</button>
+        </div>
+        <p class="sub" style="margin-bottom:12px;">Pick someone from the leaderboard. You can only challenge players who have added their email.</p>
+        <div id="friend-list" style="font-size:14px;"></div>
+        <div id="friend-form" style="display:none; margin-top:14px; border-top:1px solid #374151; padding-top:14px;">
+          <p style="margin:0 0 8px;">Challenge <span id="friend-target-name" style="color:#f59e0b; font-weight:700;"></span></p>
+          <label style="font-size:13px; color:#cbd5e1;">Set a time to battle</label>
+          <div style="display:flex; gap:8px; margin-top:6px; flex-wrap:wrap;">
+            <input id="friend-time" type="text" placeholder="e.g. 5:00 PM today" maxlength="40" style="flex:1; min-width:160px;">
+            <button class="btn purple" onclick="sendChallenge()">Send challenge</button>
+          </div>
+          <p id="friend-msg" style="font-size:13px; margin-top:8px; display:none;"></p>
+        </div>
+      </section>
+
+      <!-- Battle result / waiting -->
+      <section id="battle-result" class="card" style="display:none; text-align:center;">
+        <h2 id="battle-result-title" style="text-align:center;">Battle</h2>
+        <p id="battle-result-text" style="font-size:16px;"></p>
+      </section>
+
+    </div>
+  </div>
+
+  <!-- NEW MESSAGE POPUP -->
+  <div id="newmsg-popup" class="overlay">
+    <div class="box">
+      <div style="font-size:40px; margin-bottom:8px;">&#128172;</div>
+      <h2 id="newmsg-text" style="text-align:center;">You Have One New Message</h2>
+      <div style="margin-top:16px; display:flex; gap:8px; justify-content:center;">
+        <button class="btn amber" onclick="openMessagesFromPopup()">Open</button>
+        <button class="btn slate" onclick="hidePopup('newmsg-popup')">Dismiss</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- BATTLE WINNER OVERLAY -->
+  <div id="winner-overlay" class="overlay">
+    <div class="box">
+      <div style="font-size:44px; margin-bottom:8px;">&#127942;</div>
+      <h2 id="winner-text" style="text-align:center;"></h2>
+      <p id="winner-sub" class="sub"></p>
+      <p class="sub" style="margin-top:14px;">Returning to the homepage in <span id="winner-count">10</span>s...</p>
+    </div>
+  </div>
+
+  <script>
+    const OWNER_NAME = 'Rishi Parikh';
+
+    let sentencePools = null;
+    const DEFAULT_BENCHMARK = 'A good typing test measures both your speed and your accuracy over a steady passage of text.';
+    const diffNames = { easy: 'Easy', medium: 'Medium', hard: 'Hard', extreme: 'EXTREME' };
+
+    let playerName = '';
+    let isOwner = false;
+    let difficulty = '';
+    let currentSentence = '';
+    let startTime = null, timerInterval = null, gameActive = false;
+    let lastWpm = 0, lastAcc = 0, lastErrors = {}, acceptedValue = '';
+    let mode = 'normal'; // normal | practice | benchmark | battle
+
+    // battle state
+    let battle = null; // { id, opponent, levels, idx, totalAcc, totalWpm }
+    let winnerTimer = null, battlePoll = null;
+    let chatPoll = null, ownerPoll = null;
+
+    const input = document.getElementById('type-input');
+    const display = document.getElementById('sentence-display');
+    const timerEl = document.getElementById('timer');
+    const wpmEl = document.getElementById('wpm-display');
+    const accEl = document.getElementById('acc-display');
+
+    function show(id){ document.getElementById(id).style.display = 'block'; }
+    function hide(id){ document.getElementById(id).style.display = 'none'; }
+    function hidePopup(id){ document.getElementById(id).style.display = 'none'; }
+    function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+    function pickOne(a){ return a[Math.floor(Math.random()*a.length)]; }
+    function pickSome(a,n){ const c=a.slice(),o=[]; for(let i=0;i<n&&c.length;i++) o.push(c.splice(Math.floor(Math.random()*c.length),1)[0]); return o; }
+    function generateText(diff){
+      const pool=(sentencePools&&sentencePools[diff])||[];
+      if(!pool.length) return '';
+      if(diff==='medium') return pickSome(pool,2).join(' ');
+      if(diff==='hard') return pickSome(pool,3).join(' ');
+      return pickOne(pool);
+    }
+
+    // ---------------- Name gate ----------------
+    document.getElementById('name-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const first = document.getElementById('startup-first').value.trim();
+      const last = document.getElementById('startup-last').value.trim();
+      if (!first) return;
+      const typed = last ? (first + ' ' + last) : first;
+      const hint = document.getElementById('name-hint');
+      hint.style.display = 'none';
+      let resolved = typed;
+      try {
+        const res = await fetch('/api/resolve-name?name=' + encodeURIComponent(typed));
+        const data = await res.json().catch(() => ({}));
+        if (data && data.ambiguous) {
+          hint.textContent = 'There is more than one "' + first + '". Please add your last name.';
+          hint.style.display = 'block';
+          return;
+        }
+        if (data && data.name) resolved = data.name;
+      } catch (e) {}
+      playerName = resolved;                 // auto-registers even with just a first name
+      isOwner = playerName.toLowerCase() === OWNER_NAME.toLowerCase();
+      document.getElementById('who').textContent = playerName;
+      hide('name-section');
+      show('app');
+      setupChatForRole();
+      loadPlayers();
+      afterLogin();
+    });
+
+    async function afterLogin() {
+      // New-message popup
+      try {
+        let n = 0;
+        if (isOwner && ownerAuth) {
+          const r = await fetch('/api/chat/owner-unread?' + ownerQuery());
+          const d = await r.json().catch(()=>({})); n = (d && d.unread) || 0;
+          if (n > 0) document.getElementById('newmsg-text').textContent = 'You Have ' + (n === 1 ? 'One New Message' : n + ' New Messages') + ' from players';
+        } else {
+          const r = await fetch('/api/chat/unread?player=' + encodeURIComponent(playerName));
+          const d = await r.json().catch(()=>({})); n = (d && d.unread) || 0;
+          if (n > 0) document.getElementById('newmsg-text').textContent = 'You Have ' + (n === 1 ? 'One New Message' : n + ' New Messages');
+        }
+        if (n > 0) {
+          document.getElementById('chat-badge').textContent = n;
+          document.getElementById('chat-badge').style.display = 'flex';
+          document.getElementById('newmsg-popup').style.display = 'flex';
+        }
+      } catch (e) {}
+      // Pending battles
+      try {
+        const r = await fetch('/api/battle/pending?player=' + encodeURIComponent(playerName));
+        const list = await r.json().catch(()=>[]);
+        if (Array.isArray(list) && list.length) {
+          const b = list[0];
+          window._pendingBattle = b;
+          document.getElementById('battle-banner-text').textContent =
+            (b.opponent || 'Someone') + ' challenged you to a battle!' + (b.time ? ' (time: ' + b.time + ')' : '');
+          show('battle-banner');
+        }
+      } catch (e) {}
+    }
+
+    function setupChatForRole() {
+      if (isOwner) {
+        ownerAuth = { owner: playerName };
+        show('chat-owner'); hide('chat-user');
+        document.getElementById('chat-title').textContent = 'Owner messages';
+      } else {
+        ownerAuth = null;
+        show('chat-user'); hide('chat-owner');
+        document.getElementById('chat-title').textContent = 'Messages';
+      }
+    }
+
+    // ---------------- Difficulty + game ----------------
+    function selectDifficulty(level){
+      difficulty = level;
+      document.getElementById('diff-label').textContent = diffNames[level] || level;
+      hide('submit-section'); hide('coach-section');
+      show('typing-section');
+      document.getElementById('diff-row').style.display = 'flex';
+      document.getElementById('battle-head').style.display = 'none';
+      display.innerHTML = '<span style="color:#9ca3af;font-style:italic;">Press Start to begin...</span>';
+      document.getElementById('start-btn').style.display = '';
+      document.getElementById('finish-btn').style.display = 'none';
+    }
+    function changeDifficulty(){
+      if (gameActive){ gameActive=false; clearInterval(timerInterval); }
+      input.disabled = true;
+      hide('typing-section'); hide('submit-section');
+      show('difficulty-section');
+    }
+
+    function beginTimedRound(sentence){
+      currentSentence = sentence;
+      acceptedValue = '';
+      input.value = '';
+      input.disabled = false;
+      input.focus();
+      gameActive = true;
+      startTime = Date.now();
+      document.getElementById('start-btn').style.display = 'none';
+      document.getElementById('finish-btn').style.display = '';
+      renderSentence();
+      timerInterval = setInterval(updateTimer, 100);
+    }
+
+    function startGame(){
+      if (!difficulty){ show('difficulty-section'); return; }
+      if (!sentencePools || !(sentencePools[difficulty] && sentencePools[difficulty].length)){
+        display.innerHTML = '<span style="color:#f87171;font-style:italic;">Still loading passages… press Start again.</span>';
+        loadSentences(); return;
+      }
+      mode = 'normal';
+      hide('submit-section');
+      beginTimedRound(generateText(difficulty));
+    }
+
+    function renderSentence(){
+      const typed = input.value; let html='';
+      for (let i=0;i<currentSentence.length;i++){
+        const ch = escapeHtml(currentSentence[i]);
+        if (i<typed.length) html += typed[i]===currentSentence[i] ? '<span class="char-correct">'+ch+'</span>' : '<span class="char-incorrect">'+ch+'</span>';
+        else if (i===typed.length) html += '<span class="char-current">'+ch+'</span>';
+        else html += '<span class="char-pending">'+ch+'</span>';
+      }
+      display.innerHTML = html;
+    }
+    function updateTimer(){
+      const el=(Date.now()-startTime)/1000; timerEl.textContent=el.toFixed(1)+'s';
+      const words=input.value.trim().split(/\s+/).filter(Boolean).length; const m=el/60;
+      wpmEl.textContent = m>0 ? Math.round(words/m) : 0;
+    }
+
+    // No deleting
+    input.addEventListener('input', () => {
+      if (!gameActive){ acceptedValue = input.value; return; }
+      const v = input.value;
+      if (v.length < acceptedValue.length || !v.startsWith(acceptedValue)){
+        input.value = acceptedValue;
+        try { input.setSelectionRange(acceptedValue.length, acceptedValue.length); } catch(e){}
+        return;
+      }
+      acceptedValue = v;
+      renderSentence();
+      if (input.value.length >= currentSentence.length) endGame();
+    });
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') e.preventDefault();
+      if (gameActive && (e.key === 'Backspace' || e.key === 'Delete')) e.preventDefault();
+    });
+
+    function roundStats(){
+      const el=(Date.now()-startTime)/1000;
+      const words=currentSentence.split(/\s+/).length;
+      const wpm = el>0 ? Math.round(words/(el/60)) : 0;
+      let correct=0; lastErrors={};
+      for (let i=0;i<currentSentence.length;i++){
+        if (input.value[i]===currentSentence[i]) correct++;
+        else { const t=currentSentence[i]; lastErrors[t]=(lastErrors[t]||0)+1; }
+      }
+      const acc = Math.round((correct/currentSentence.length)*100);
+      return { wpm, acc };
+    }
+
+    function endGame(){
+      if (!gameActive) return;
+      gameActive = false; clearInterval(timerInterval); input.disabled = true;
+      const st = roundStats(); lastWpm = st.wpm; lastAcc = st.acc;
+      wpmEl.textContent = lastWpm; accEl.textContent = lastAcc + '%';
+
+      if (mode === 'battle'){ battleRoundDone(st); return; }
+
+      document.getElementById('start-btn').style.display = '';
+      document.getElementById('finish-btn').style.display = 'none';
+      show('submit-section');
+
+      if (mode === 'benchmark'){ mode='normal'; showBenchmarkResult(lastWpm, lastAcc); return; }
+      if (mode === 'practice'){ mode='normal';
+        document.getElementById('result-stats').textContent = lastWpm+' WPM · '+lastAcc+'% · practice';
+        const m=document.getElementById('submit-msg'); m.textContent='Practice run — not saved to the leaderboard.'; m.style.color='#cbd5e1';
+        document.getElementById('retry-btn').style.display='none'; return;
+      }
+      document.getElementById('result-stats').textContent = lastWpm+' WPM · '+lastAcc+'% · '+(diffNames[difficulty]||difficulty);
+      submitScore();
+    }
+
+    // ---------------- Score submit ----------------
+    async function submitScore(){
+      const msg=document.getElementById('submit-msg'); const retry=document.getElementById('retry-btn');
+      retry.style.display='none'; msg.textContent='Saving your score...'; msg.style.color='#cbd5e1';
+      try {
+        const res = await fetch('/api/scores', { method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ player_name: playerName, wpm:lastWpm, accuracy:lastAcc, difficulty }) });
+        const data = await res.json().catch(()=>({}));
+        if (res.ok){ msg.textContent='✓ Score saved to the leaderboard!'; msg.style.color='#4ade80'; loadPlayers(); }
+        else { msg.textContent=(data.error||'Could not save score.')+' Tap "Save score" to retry.'; msg.style.color='#f87171'; retry.style.display=''; }
+      } catch(e){ msg.textContent='Network error — tap "Save score" to retry.'; msg.style.color='#f87171'; retry.style.display=''; }
+    }
+
+    // ---------------- Leaderboard (names, expandable) ----------------
+    let playersCache = [];
+    async function loadPlayers(){
+      try {
+        const res = await fetch('/api/players?limit=50');
+        playersCache = await res.json().catch(()=>[]);
+      } catch(e){ playersCache=[]; }
+      renderPlayers();
+    }
+    function renderPlayers(){
+      const box = document.getElementById('leaderboard-body');
+      if (!playersCache.length){ box.innerHTML = '<div style="padding:16px; color:#9ca3af;">No scores yet</div>'; return; }
+      box.innerHTML = playersCache.map((p,i) => {
+        const safe = escapeHtml(p.name||'Anon');
+        return '<div class="lb-name" onclick="toggleTries(this,\''+encodeURIComponent(p.name)+'\')">' +
+          '<div><span style="color:#9ca3af; margin-right:10px;">'+(i+1)+'</span><span style="font-weight:600;">'+safe+'</span>' +
+          ' <span style="color:#9ca3af; font-size:12px;">('+p.tries+' tr'+(p.tries===1?'y':'ies')+')</span></div>' +
+          '<div class="mono" style="color:#cbd5e1;">best '+p.wpm+' WPM · '+p.accuracy+'%</div>' +
+          '</div><div class="tries" style="display:none; padding:6px 16px 12px; background:#101a33;"></div>';
+      }).join('');
+    }
+    async function toggleTries(rowEl, encName){
+      const box = rowEl.nextElementSibling;
+      if (box.style.display === 'block'){ box.style.display='none'; return; }
+      box.style.display='block'; box.innerHTML='<div style="color:#9ca3af; font-size:13px;">Loading...</div>';
+      try {
+        const res = await fetch('/api/scores?player=' + encName);
+        const tries = await res.json().catch(()=>[]);
+        if (!tries.length){ box.innerHTML='<div style="color:#9ca3af; font-size:13px;">No tries.</div>'; return; }
+        box.innerHTML = '<table style="width:100%; font-size:13px;"><thead><tr style="color:#9ca3af;"><th style="text-align:left;">Level</th><th style="text-align:right;">WPM</th><th style="text-align:right;">Acc</th><th style="text-align:right;">When</th></tr></thead><tbody>' +
+          tries.map(t => { let when=''; try{when=new Date(t.created_at).toLocaleDateString();}catch(e){}
+            return '<tr><td>'+ (diffNames[t.difficulty]||'—') +'</td><td style="text-align:right;" class="mono">'+t.wpm+'</td><td style="text-align:right;">'+t.accuracy+'%</td><td style="text-align:right; color:#9ca3af;">'+escapeHtml(when)+'</td></tr>'; }).join('') +
+          '</tbody></table>';
+      } catch(e){ box.innerHTML='<div style="color:#f87171; font-size:13px;">Could not load.</div>'; }
+    }
+    async function clearLeaderboard(){
+      const pin=document.getElementById('lb-pin').value.trim(); const msg=document.getElementById('lb-msg');
+      msg.style.display='block';
+      let q;
+      if (ownerAuth) q = ownerQuery();
+      else if (pin) q = 'pin='+encodeURIComponent(pin);
+      else { msg.textContent='Enter the owner PIN (or log in as the owner).'; msg.style.color='#f87171'; return; }
+      try {
+        const res = await fetch('/api/scores?'+q, { method:'DELETE' });
+        if (res.ok){ msg.textContent='Leaderboard cleared.'; msg.style.color='#4ade80'; loadPlayers(); }
+        else if (res.status===403){ msg.textContent='Owner access denied.'; msg.style.color='#f87171'; }
+        else { msg.textContent='Could not clear.'; msg.style.color='#f87171'; }
+      } catch(e){ msg.textContent='Network error.'; msg.style.color='#f87171'; }
+    }
+
+    // ---------------- Coach ----------------
+    function coachAdvice(wpm,acc){
+      const t=[];
+      if(!wpm&&!acc) t.push('Play a round and I will tailor this to your result.');
+      else if(acc<90) t.push('Accuracy first: ease off the speed by ~15%. Clean keystrokes beat fast typing full of mistakes.');
+      else if(acc>=97&&wpm<40) t.push('Accuracy is excellent — push the pace. Type in smooth whole-word bursts.');
+      else if(wpm>=60&&acc>=95) t.push('Strong on both. Practise Hard / EXTREME for stamina and consistency.');
+      else t.push('Good run. Nudge speed up while keeping accuracy at or above 95%.');
+      t.push('Keep your eyes on the passage, not your hands — muscle memory is what unlocks speed.');
+      t.push('Sit up straight, wrists floating, correct finger per key to cut wasted motion.');
+      return t;
+    }
+    async function openCoach(){
+      const body=document.getElementById('coach-body');
+      const has = lastWpm||lastAcc||Object.keys(lastErrors).length;
+      let html = has ? '<p style="margin-bottom:8px;">Last run: <span style="color:#f59e0b; font-weight:700;">'+lastWpm+' WPM · '+lastAcc+'%</span></p>' : '<p style="margin-bottom:8px;">Some fundamentals to start with:</p>';
+      html += '<ul style="padding-left:1.25rem;">'+coachAdvice(lastWpm,lastAcc).map(x=>'<li style="margin-bottom:4px;">'+x+'</li>').join('')+'</ul>';
+      const sorted=Object.entries(lastErrors).sort((a,b)=>b[1]-a[1]).slice(0,6);
+      const pb=document.getElementById('coach-practice-btn');
+      if(sorted.length){
+        html += '<p style="margin:12px 0 6px; font-weight:700;">Keys you missed most:</p><div>'+
+          sorted.map(([k,c])=>'<span class="mono" style="display:inline-block; background:#ef4444; color:#fff; border-radius:4px; padding:2px 8px; margin:0 6px 6px 0;">'+(k===' '?'space':escapeHtml(k))+' ×'+c+'</span>').join('')+'</div>';
+        pb.style.display='';
+      } else pb.style.display='none';
+      html += '<p id="coach-bench" style="margin-top:12px; color:#9ca3af;">Loading your last progress test…</p>';
+      body.innerHTML = html;
+      show('coach-section');
+      document.getElementById('coach-section').scrollIntoView({behavior:'smooth',block:'nearest'});
+      try {
+        const r=await fetch('/api/benchmark?player='+encodeURIComponent(playerName)); const b=await r.json().catch(()=>null);
+        const el=document.getElementById('coach-bench');
+        if(b&&typeof b.wpm==='number'){ el.innerHTML='Last progress test: <span style="color:#f59e0b; font-weight:700;">'+b.wpm+' WPM · '+b.accuracy+'%</span>'; }
+        else { el.textContent='No progress test yet — take one below to set your baseline.'; }
+      } catch(e){}
+    }
+    function closeCoach(){ hide('coach-section'); }
+    function buildDrill(keys){
+      const letters=keys.filter(k=>/[a-z]/i.test(k)).map(k=>k.toLowerCase());
+      const words=[];
+      if(sentencePools) Object.values(sentencePools).forEach(v=>{ const arr=Array.isArray(v)?v:[v];
+        arr.forEach(s=>String(s).split(/\s+/).forEach(w=>{const c=w.replace(/[^a-zA-Z]/g,'').toLowerCase(); if(c.length>1)words.push(c);})); });
+      let cand=letters.length?words.filter(w=>letters.some(l=>w.includes(l))):words;
+      if(!cand.length)cand=words;
+      const d=pickSome(cand,Math.min(12,cand.length)).join(' ');
+      return d || (letters.length?letters.map(l=>l+l+l).join(' '):'the quick brown fox jumps');
+    }
+    function practiceTroubleKeys(){ startDrill(buildDrill(Object.keys(lastErrors))); }
+    function startDrill(text){
+      closeCoach(); show('typing-section'); hide('submit-section');
+      document.getElementById('diff-row').style.display='flex';
+      document.getElementById('battle-head').style.display='none';
+      mode='practice'; beginTimedRound(text);
+    }
+    function startBenchmark(){
+      const b=(sentencePools&&sentencePools.benchmark)||DEFAULT_BENCHMARK;
+      const text=Array.isArray(b)?b[0]:b;
+      closeCoach(); show('typing-section'); hide('submit-section');
+      document.getElementById('diff-row').style.display='flex';
+      document.getElementById('battle-head').style.display='none';
+      document.getElementById('diff-label').textContent='Progress Test';
+      mode='benchmark'; beginTimedRound(text);
+    }
+    async function showBenchmarkResult(wpm,acc){
+      document.getElementById('retry-btn').style.display='none';
+      document.getElementById('result-stats').textContent=wpm+' WPM · '+acc+'% · progress test';
+      const msg=document.getElementById('submit-msg'); msg.style.color='#cbd5e1'; msg.textContent='Saving your progress…';
+      try {
+        const res=await fetch('/api/benchmark',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({player_name:playerName,wpm,accuracy:acc})});
+        const data=await res.json().catch(()=>({})); const prev=data&&data.previous;
+        if(prev){ const dW=wpm-prev.wpm, dA=acc-prev.accuracy;
+          const w=dW===0?'the same speed':(dW>0?'+'+dW+' WPM faster':dW+' WPM slower');
+          const a=dA===0?'the same accuracy':(dA>0?'+'+dA+'% more accurate':dA+'% less accurate');
+          msg.textContent='vs your last test ('+prev.wpm+' WPM, '+prev.accuracy+'%): '+w+', '+a+'.';
+        } else if(res.ok){ msg.textContent='Saved as your baseline — take it again later, on any device, to see improvement.'; }
+        else { msg.textContent=(data&&data.error)||'Could not save progress.'; msg.style.color='#f87171'; }
+      } catch(e){ msg.textContent='Network error saving progress.'; msg.style.color='#f87171'; }
+    }
+
+    // ---------------- Chat ----------------
+    function toggleChat(){
+      const p=document.getElementById('chat-panel');
+      if (p.style.display==='block'){ p.style.display='none'; stopChatPolling(); return; }
+      hide('friend-panel'); p.style.display='block';
+      p.scrollIntoView({behavior:'smooth',block:'nearest'});
+      if (ownerAuth){ loadOwnerChats(); }
+      else { maybeShowEmailPrompt(); loadUserThread(); }
+      startChatPolling();
+    }
+    // Live auto-refresh so new messages appear without reloading
+    function startChatPolling(){
+      stopChatPolling();
+      if (ownerAuth){
+        ownerPoll = setInterval(() => {
+          const typing = Array.from(document.querySelectorAll('[id^="oreply-"]')).some(el => el === document.activeElement || el.value.trim());
+          if (typing) return; // don't wipe a reply being typed
+          loadOwnerChats(true);
+        }, 5000);
+      } else {
+        chatPoll = setInterval(() => loadUserThread(true), 4000);
+      }
+    }
+    function stopChatPolling(){
+      if (chatPoll){ clearInterval(chatPoll); chatPoll=null; }
+      if (ownerPoll){ clearInterval(ownerPoll); ownerPoll=null; }
+    }
+    async function maybeShowEmailPrompt(){
+      try {
+        const r=await fetch('/api/email?player='+encodeURIComponent(playerName)); const d=await r.json().catch(()=>({}));
+        if (!d.hasEmail && !window._emailDismissed) show('email-prompt'); else hide('email-prompt');
+      } catch(e){}
+    }
+    function dismissEmailPrompt(){ window._emailDismissed=true; hide('email-prompt'); }
+    async function saveEmail(){
+      const email=document.getElementById('email-input').value.trim(); const msg=document.getElementById('email-msg');
+      msg.style.display='block';
+      try {
+        const res=await fetch('/api/email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:playerName,email})});
+        const d=await res.json().catch(()=>({}));
+        if(res.ok){ msg.textContent='Saved! You’ll get emails about replies and battle invites.'; msg.style.color='#4ade80'; setTimeout(()=>hide('email-prompt'),1200); }
+        else { msg.textContent=d.error||'Could not save email.'; msg.style.color='#f87171'; }
+      } catch(e){ msg.textContent='Network error.'; msg.style.color='#f87171'; }
+    }
+    async function loadUserThread(silent){
+      const t=document.getElementById('chat-thread'); if(!silent) t.innerHTML='<p style="color:#9ca3af;">Loading...</p>';
+      document.getElementById('chat-badge').style.display='none';
+      try {
+        const r=await fetch('/api/chat?player='+encodeURIComponent(playerName)); const c=await r.json().catch(()=>null);
+        const msgs=(c&&c.messages)||[];
+        if(!msgs.length){ t.innerHTML='<p style="color:#9ca3af;">No messages yet. Say hello below.</p>'; return; }
+        t.innerHTML=msgs.map(m=>{ const mine=m.from==='user'; let when=''; try{when=new Date(m.at).toLocaleString();}catch(e){}
+          return '<div class="msg-row"><div style="font-size:12px; color:#9ca3af;">'+(mine?'You':'Owner')+' · '+escapeHtml(when)+'</div><div class="bubble" style="background:'+(mine?'#0f172a':'#f59e0b')+'; color:'+(mine?'#e5e7eb':'#1a1a2e')+';">'+escapeHtml(m.text)+'</div></div>';
+        }).join('');
+        t.scrollTop=t.scrollHeight;
+      } catch(e){ t.innerHTML='<p style="color:#f87171;">Could not load.</p>'; }
+    }
+    async function sendChat(){
+      const el=document.getElementById('chat-input'); const text=el.value.trim(); if(!text) return; el.value='';
+      try { await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:playerName,message:text})}); await loadUserThread(); } catch(e){}
+    }
+    function openMessagesFromPopup(){ hidePopup('newmsg-popup'); toggleChat(); }
+
+    // Owner console
+    let ownerConvos=[], ownerAuth=null;
+    function ownerQuery(){ return ownerAuth && ownerAuth.pin ? ('pin='+encodeURIComponent(ownerAuth.pin)) : ('owner='+encodeURIComponent(ownerAuth.owner)); }
+    function ownerBody(obj){ obj=obj||{}; if(ownerAuth && ownerAuth.pin) obj.pin=ownerAuth.pin; else if(ownerAuth) obj.owner=ownerAuth.owner; return obj; }
+    async function unlockOwner(){
+      const pin=document.getElementById('owner-login-pin').value.trim(); const m=document.getElementById('owner-login-msg');
+      if(!pin){ m.textContent='Enter the PIN.'; m.style.color='#f87171'; return; }
+      try {
+        const r=await fetch('/api/chat/owner-unread?pin='+encodeURIComponent(pin));
+        if(r.status===403){ m.textContent='Incorrect PIN.'; m.style.color='#f87171'; return; }
+        ownerAuth={pin:pin};
+        hide('chat-user'); show('chat-owner');
+        document.getElementById('chat-title').textContent='Owner messages';
+        stopChatPolling(); startChatPolling();
+        loadOwnerChats();
+      } catch(e){ m.textContent='Network error.'; m.style.color='#f87171'; }
+    }
+    async function loadOwnerChats(silent){
+      const box=document.getElementById('owner-threads');
+      if(!ownerAuth){ if(!silent) box.innerHTML='<p style="color:#f87171;">Owner access required.</p>'; return; }
+      if(!silent) box.innerHTML='<p style="color:#9ca3af;">Loading...</p>';
+      try {
+        const res=await fetch('/api/chat/all?'+ownerQuery());
+        if(res.status===403){ if(!silent) box.innerHTML='<p style="color:#f87171;">Owner access denied.</p>'; return; }
+        ownerConvos=await res.json().catch(()=>[]);
+        if(!ownerConvos.length){ box.innerHTML='<p style="color:#9ca3af;">No messages yet.</p>'; return; }
+        box.innerHTML=ownerConvos.map((c,idx)=>{
+          const nm=escapeHtml(c.name||'Anonymous');
+          const msgs=(c.messages||[]).map(m=>{ const o=m.from==='owner'; let when=''; try{when=new Date(m.at).toLocaleString();}catch(e){}
+            return '<div class="msg-row"><div style="font-size:11px; color:#9ca3af;">'+(o?'You':nm)+' · '+escapeHtml(when)+'</div><div class="bubble" style="background:'+(o?'#f59e0b':'#0f172a')+'; color:'+(o?'#1a1a2e':'#e5e7eb')+';">'+escapeHtml(m.text)+'</div></div>';
+          }).join('');
+          return '<div style="border:1px solid #374151; border-radius:10px; padding:12px; margin-bottom:12px;"><div style="font-weight:700; color:#f5f5f5; margin-bottom:8px;">'+nm+'</div>'+msgs+
+            '<div style="display:flex; gap:8px; margin-top:8px;"><input id="oreply-'+idx+'" type="text" maxlength="1000" placeholder="Reply..." style="flex:1;"><button class="btn green" onclick="ownerReply('+idx+')">Send</button></div></div>';
+        }).join('');
+      } catch(e){ box.innerHTML='<p style="color:#f87171;">Network error.</p>'; }
+    }
+    async function ownerReply(idx){
+      const c=ownerConvos[idx]; if(!c) return; const el=document.getElementById('oreply-'+idx); const text=el.value.trim(); if(!text) return; el.value='';
+      try { const res=await fetch('/api/chat/owner',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(ownerBody({player:c.name,text:text}))}); if(res.ok) loadOwnerChats(); } catch(e){}
+    }
+
+    // ---------------- Friend / Battle ----------------
+    let friendTarget='';
+    function toggleFriend(){
+      const p=document.getElementById('friend-panel');
+      if (p.style.display==='block'){ p.style.display='none'; return; }
+      hide('chat-panel'); p.style.display='block';
+      p.scrollIntoView({behavior:'smooth',block:'nearest'});
+      renderFriendList();
+    }
+    function renderFriendList(){
+      const box=document.getElementById('friend-list');
+      const others=playersCache.filter(p=>p.name.toLowerCase()!==playerName.toLowerCase());
+      if(!others.length){ box.innerHTML='<p style="color:#9ca3af;">No other players on the leaderboard yet.</p>'; return; }
+      box.innerHTML=others.map(p=>{
+        const nm=escapeHtml(p.name);
+        if(p.hasEmail) return '<div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #243049;"><span>'+nm+'</span><button class="btn purple" style="padding:4px 12px; font-size:13px;" onclick="pickFriend(\''+encodeURIComponent(p.name)+'\')">Challenge</button></div>';
+        return '<div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #243049; color:#9ca3af;"><span>'+nm+'</span><span style="font-size:12px;">No email — can’t friend</span></div>';
+      }).join('');
+    }
+    function pickFriend(encName){
+      friendTarget=decodeURIComponent(encName);
+      document.getElementById('friend-target-name').textContent=friendTarget;
+      document.getElementById('friend-msg').style.display='none';
+      document.getElementById('friend-time').value='';
+      show('friend-form');
+      document.getElementById('friend-form').scrollIntoView({behavior:'smooth',block:'nearest'});
+    }
+    async function sendChallenge(){
+      const time=document.getElementById('friend-time').value.trim(); const msg=document.getElementById('friend-msg');
+      msg.style.display='block'; msg.style.color='#cbd5e1'; msg.textContent='Sending...';
+      try {
+        const res=await fetch('/api/battle',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({from:playerName,to:friendTarget,time})});
+        const d=await res.json().catch(()=>({}));
+        if(res.ok){
+          msg.textContent='Challenge sent! They’ll get an email. Starting your rounds now…'; msg.style.color='#4ade80';
+          setTimeout(()=>{ toggleFriend(); startBattle(d.id, friendTarget); }, 900);
+        } else { msg.textContent=d.error||'Could not send challenge.'; msg.style.color='#f87171'; }
+      } catch(e){ msg.textContent='Network error.'; msg.style.color='#f87171'; }
+    }
+
+    function acceptPendingBattle(){
+      const b=window._pendingBattle; if(!b) return;
+      hide('battle-banner');
+      startBattle(b.id, b.opponent);
+    }
+
+    function startBattle(id, opponent){
+      battle = { id, opponent, levels:['easy','medium','hard','extreme'], idx:0, totalAcc:0, totalWpm:0 };
+      mode='battle';
+      hide('difficulty-section'); hide('submit-section'); hide('coach-section'); hide('battle-result');
+      document.getElementById('home-view').style.display='block';
+      // hide leaderboard card while battling? keep it; just show typing section
+      show('typing-section');
+      document.getElementById('diff-row').style.display='none';
+      document.getElementById('battle-head').style.display='block';
+      startBattleRound();
+    }
+    function startBattleRound(){
+      const lvl=battle.levels[battle.idx];
+      document.getElementById('battle-head').textContent='Battle vs '+battle.opponent+' — Round '+(battle.idx+1)+'/4: '+(diffNames[lvl]||lvl);
+      document.getElementById('diff-label').textContent=diffNames[lvl]||lvl;
+      const text = (sentencePools && sentencePools[lvl]) ? generateText(lvl) : 'the quick brown fox jumps over the lazy dog';
+      beginTimedRound(text);
+    }
+    function battleRoundDone(st){
+      battle.totalAcc += st.acc; battle.totalWpm += st.wpm;
+      battle.idx++;
+      if (battle.idx < battle.levels.length){ startBattleRound(); return; }
+      // finished all 4 rounds
+      document.getElementById('finish-btn').style.display='none';
+      hide('typing-section');
+      submitBattle();
+    }
+    async function submitBattle(){
+      show('battle-result');
+      document.getElementById('battle-result-title').textContent='Battle vs '+battle.opponent;
+      document.getElementById('battle-result-text').innerHTML='Your total: <b>'+battle.totalAcc+' acc</b> / <b>'+battle.totalWpm+' wpm</b> over 4 rounds.<br>Submitting…';
+      document.getElementById('battle-result').scrollIntoView({behavior:'smooth',block:'nearest'});
+      try {
+        const res=await fetch('/api/battle/score',{method:'POST',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({id:battle.id, player:playerName, totalAcc:battle.totalAcc, totalWpm:battle.totalWpm})});
+        const v=await res.json().catch(()=>({}));
+        if(v && v.bothDone){ revealWinner(v.winner); }
+        else {
+          document.getElementById('battle-result-text').innerHTML='Your total: <b>'+battle.totalAcc+' acc</b> / <b>'+battle.totalWpm+' wpm</b>.<br>Waiting for '+battle.opponent+' to finish their rounds…';
+          pollBattle();
+        }
+      } catch(e){ document.getElementById('battle-result-text').textContent='Network error submitting your battle.'; }
+    }
+    function pollBattle(){
+      if (battlePoll) clearInterval(battlePoll);
+      battlePoll=setInterval(async ()=>{
+        try {
+          const r=await fetch('/api/battle/'+battle.id+'?player='+encodeURIComponent(playerName));
+          const v=await r.json().catch(()=>({}));
+          if(v && v.bothDone){ clearInterval(battlePoll); revealWinner(v.winner); }
+        } catch(e){}
+      }, 4000);
+    }
+    function revealWinner(winner){
+      if (battlePoll) clearInterval(battlePoll);
+      hide('battle-result');
+      const txt=document.getElementById('winner-text'); const sub=document.getElementById('winner-sub');
+      if (winner==='Tie'){ txt.textContent="It's a tie!"; sub.textContent='Great match.'; }
+      else { txt.textContent= winner + ' wins!'; sub.textContent = (winner.toLowerCase()===playerName.toLowerCase()) ? 'That’s you — nice work!' : 'Better luck next time!'; }
+      document.getElementById('winner-overlay').style.display='flex';
+      let n=10; document.getElementById('winner-count').textContent=n;
+      if (winnerTimer) clearInterval(winnerTimer);
+      winnerTimer=setInterval(()=>{ n--; document.getElementById('winner-count').textContent=n; if(n<=0){ clearInterval(winnerTimer); endBattle(); } }, 1000);
+    }
+    function endBattle(){
+      hidePopup('winner-overlay'); battle=null; mode='normal';
+      document.getElementById('battle-head').style.display='none';
+      document.getElementById('diff-row').style.display='flex';
+      hide('typing-section'); hide('battle-result');
+      show('difficulty-section');
+      loadPlayers();
+    }
+
+    // ---------------- Load sentences ----------------
+    async function loadSentences(attempt=0){
+      try {
+        const res=await fetch('/sentences.json');
+        if(!res.ok) throw new Error('bad status '+res.status);
+        sentencePools=await res.json();
+      } catch(e){ if(attempt<3){ setTimeout(()=>loadSentences(attempt+1),1500); return; } console.error('Could not load sentences:',e); }
+    }
+    loadSentences();
+  </script>
+</body>
+</html>
