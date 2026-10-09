@@ -182,15 +182,19 @@
             <input id="chat-input" type="text" maxlength="1000" placeholder="Write a message..." style="flex:1;">
             <button class="btn amber" onclick="sendChat()">Send</button>
           </div>
+          <div style="margin-top:14px; padding-top:12px; border-top:1px solid #243049;">
+            <p style="font-size:12px; color:#9ca3af; margin:0 0 6px;">Are you the owner but using a different name? Enter the PIN to open the owner console.</p>
+            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+              <input id="owner-login-pin" type="password" inputmode="numeric" placeholder="Owner PIN" maxlength="12" style="width:120px;">
+              <button class="btn slate" onclick="unlockOwner()">Unlock</button>
+              <span id="owner-login-msg" style="font-size:12px;"></span>
+            </div>
+          </div>
         </div>
 
-        <!-- Owner console -->
+        <!-- Owner console (no PIN needed when logged in as the owner) -->
         <div id="chat-owner" style="display:none;">
-          <p class="sub" style="margin-bottom:10px;">Owner console. Enter the PIN to read and reply to players.</p>
-          <div style="display:flex; gap:8px; align-items:center; margin-bottom:12px;">
-            <input id="owner-pin" type="password" inputmode="numeric" placeholder="PIN" maxlength="12" style="width:110px;">
-            <button class="btn green" onclick="loadOwnerChats()">Load</button>
-          </div>
+          <p class="sub" style="margin-bottom:10px;">Owner console &mdash; messages from players.</p>
           <div id="owner-threads" style="font-size:14px;"></div>
         </div>
       </section>
@@ -263,6 +267,7 @@
     // battle state
     let battle = null; // { id, opponent, levels, idx, totalAcc, totalWpm }
     let winnerTimer = null, battlePoll = null;
+    let chatPoll = null, ownerPoll = null;
 
     const input = document.getElementById('type-input');
     const display = document.getElementById('sentence-display');
@@ -315,20 +320,24 @@
     });
 
     async function afterLogin() {
-      // New-message popup (players)
-      if (!isOwner) {
-        try {
+      // New-message popup
+      try {
+        let n = 0;
+        if (isOwner && ownerAuth) {
+          const r = await fetch('/api/chat/owner-unread?' + ownerQuery());
+          const d = await r.json().catch(()=>({})); n = (d && d.unread) || 0;
+          if (n > 0) document.getElementById('newmsg-text').textContent = 'You Have ' + (n === 1 ? 'One New Message' : n + ' New Messages') + ' from players';
+        } else {
           const r = await fetch('/api/chat/unread?player=' + encodeURIComponent(playerName));
-          const d = await r.json().catch(()=>({}));
-          const n = (d && d.unread) || 0;
-          if (n > 0) {
-            document.getElementById('chat-badge').textContent = n;
-            document.getElementById('chat-badge').style.display = 'flex';
-            document.getElementById('newmsg-text').textContent = 'You Have ' + (n === 1 ? 'One New Message' : n + ' New Messages');
-            document.getElementById('newmsg-popup').style.display = 'flex';
-          }
-        } catch (e) {}
-      }
+          const d = await r.json().catch(()=>({})); n = (d && d.unread) || 0;
+          if (n > 0) document.getElementById('newmsg-text').textContent = 'You Have ' + (n === 1 ? 'One New Message' : n + ' New Messages');
+        }
+        if (n > 0) {
+          document.getElementById('chat-badge').textContent = n;
+          document.getElementById('chat-badge').style.display = 'flex';
+          document.getElementById('newmsg-popup').style.display = 'flex';
+        }
+      } catch (e) {}
       // Pending battles
       try {
         const r = await fetch('/api/battle/pending?player=' + encodeURIComponent(playerName));
@@ -344,8 +353,15 @@
     }
 
     function setupChatForRole() {
-      if (isOwner) { show('chat-owner'); hide('chat-user'); document.getElementById('chat-title').textContent = 'Owner messages'; }
-      else { show('chat-user'); hide('chat-owner'); document.getElementById('chat-title').textContent = 'Messages'; }
+      if (isOwner) {
+        ownerAuth = { owner: playerName };
+        show('chat-owner'); hide('chat-user');
+        document.getElementById('chat-title').textContent = 'Owner messages';
+      } else {
+        ownerAuth = null;
+        show('chat-user'); hide('chat-owner');
+        document.getElementById('chat-title').textContent = 'Messages';
+      }
     }
 
     // ---------------- Difficulty + game ----------------
@@ -512,11 +528,14 @@
     async function clearLeaderboard(){
       const pin=document.getElementById('lb-pin').value.trim(); const msg=document.getElementById('lb-msg');
       msg.style.display='block';
-      if (!pin){ msg.textContent='Enter the owner PIN.'; msg.style.color='#f87171'; return; }
+      let q;
+      if (ownerAuth) q = ownerQuery();
+      else if (pin) q = 'pin='+encodeURIComponent(pin);
+      else { msg.textContent='Enter the owner PIN (or log in as the owner).'; msg.style.color='#f87171'; return; }
       try {
-        const res = await fetch('/api/scores?pin='+encodeURIComponent(pin), { method:'DELETE' });
+        const res = await fetch('/api/scores?'+q, { method:'DELETE' });
         if (res.ok){ msg.textContent='Leaderboard cleared.'; msg.style.color='#4ade80'; loadPlayers(); }
-        else if (res.status===403){ msg.textContent='Incorrect PIN.'; msg.style.color='#f87171'; }
+        else if (res.status===403){ msg.textContent='Owner access denied.'; msg.style.color='#f87171'; }
         else { msg.textContent='Could not clear.'; msg.style.color='#f87171'; }
       } catch(e){ msg.textContent='Network error.'; msg.style.color='#f87171'; }
     }
@@ -602,11 +621,29 @@
     // ---------------- Chat ----------------
     function toggleChat(){
       const p=document.getElementById('chat-panel');
-      if (p.style.display==='block'){ p.style.display='none'; return; }
+      if (p.style.display==='block'){ p.style.display='none'; stopChatPolling(); return; }
       hide('friend-panel'); p.style.display='block';
       p.scrollIntoView({behavior:'smooth',block:'nearest'});
-      if (isOwner){ /* owner loads with pin */ }
+      if (ownerAuth){ loadOwnerChats(); }
       else { maybeShowEmailPrompt(); loadUserThread(); }
+      startChatPolling();
+    }
+    // Live auto-refresh so new messages appear without reloading
+    function startChatPolling(){
+      stopChatPolling();
+      if (ownerAuth){
+        ownerPoll = setInterval(() => {
+          const typing = Array.from(document.querySelectorAll('[id^="oreply-"]')).some(el => el === document.activeElement || el.value.trim());
+          if (typing) return; // don't wipe a reply being typed
+          loadOwnerChats(true);
+        }, 5000);
+      } else {
+        chatPoll = setInterval(() => loadUserThread(true), 4000);
+      }
+    }
+    function stopChatPolling(){
+      if (chatPoll){ clearInterval(chatPoll); chatPoll=null; }
+      if (ownerPoll){ clearInterval(ownerPoll); ownerPoll=null; }
     }
     async function maybeShowEmailPrompt(){
       try {
@@ -625,8 +662,8 @@
         else { msg.textContent=d.error||'Could not save email.'; msg.style.color='#f87171'; }
       } catch(e){ msg.textContent='Network error.'; msg.style.color='#f87171'; }
     }
-    async function loadUserThread(){
-      const t=document.getElementById('chat-thread'); t.innerHTML='<p style="color:#9ca3af;">Loading...</p>';
+    async function loadUserThread(silent){
+      const t=document.getElementById('chat-thread'); if(!silent) t.innerHTML='<p style="color:#9ca3af;">Loading...</p>';
       document.getElementById('chat-badge').style.display='none';
       try {
         const r=await fetch('/api/chat?player='+encodeURIComponent(playerName)); const c=await r.json().catch(()=>null);
@@ -645,15 +682,30 @@
     function openMessagesFromPopup(){ hidePopup('newmsg-popup'); toggleChat(); }
 
     // Owner console
-    let ownerConvos=[], ownerPin='';
-    async function loadOwnerChats(){
-      const pin=document.getElementById('owner-pin').value.trim(); const box=document.getElementById('owner-threads');
-      if(!pin){ box.innerHTML='<p style="color:#f87171;">Enter the PIN.</p>'; return; }
-      box.innerHTML='<p style="color:#9ca3af;">Loading...</p>';
+    let ownerConvos=[], ownerAuth=null;
+    function ownerQuery(){ return ownerAuth && ownerAuth.pin ? ('pin='+encodeURIComponent(ownerAuth.pin)) : ('owner='+encodeURIComponent(ownerAuth.owner)); }
+    function ownerBody(obj){ obj=obj||{}; if(ownerAuth && ownerAuth.pin) obj.pin=ownerAuth.pin; else if(ownerAuth) obj.owner=ownerAuth.owner; return obj; }
+    async function unlockOwner(){
+      const pin=document.getElementById('owner-login-pin').value.trim(); const m=document.getElementById('owner-login-msg');
+      if(!pin){ m.textContent='Enter the PIN.'; m.style.color='#f87171'; return; }
       try {
-        const res=await fetch('/api/chat/all?pin='+encodeURIComponent(pin));
-        if(res.status===403){ box.innerHTML='<p style="color:#f87171;">Incorrect PIN.</p>'; return; }
-        ownerConvos=await res.json().catch(()=>[]); ownerPin=pin;
+        const r=await fetch('/api/chat/owner-unread?pin='+encodeURIComponent(pin));
+        if(r.status===403){ m.textContent='Incorrect PIN.'; m.style.color='#f87171'; return; }
+        ownerAuth={pin:pin};
+        hide('chat-user'); show('chat-owner');
+        document.getElementById('chat-title').textContent='Owner messages';
+        stopChatPolling(); startChatPolling();
+        loadOwnerChats();
+      } catch(e){ m.textContent='Network error.'; m.style.color='#f87171'; }
+    }
+    async function loadOwnerChats(silent){
+      const box=document.getElementById('owner-threads');
+      if(!ownerAuth){ if(!silent) box.innerHTML='<p style="color:#f87171;">Owner access required.</p>'; return; }
+      if(!silent) box.innerHTML='<p style="color:#9ca3af;">Loading...</p>';
+      try {
+        const res=await fetch('/api/chat/all?'+ownerQuery());
+        if(res.status===403){ if(!silent) box.innerHTML='<p style="color:#f87171;">Owner access denied.</p>'; return; }
+        ownerConvos=await res.json().catch(()=>[]);
         if(!ownerConvos.length){ box.innerHTML='<p style="color:#9ca3af;">No messages yet.</p>'; return; }
         box.innerHTML=ownerConvos.map((c,idx)=>{
           const nm=escapeHtml(c.name||'Anonymous');
@@ -667,7 +719,7 @@
     }
     async function ownerReply(idx){
       const c=ownerConvos[idx]; if(!c) return; const el=document.getElementById('oreply-'+idx); const text=el.value.trim(); if(!text) return; el.value='';
-      try { const res=await fetch('/api/chat/owner',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({player:c.name,text,pin:ownerPin})}); if(res.ok) loadOwnerChats(); } catch(e){}
+      try { const res=await fetch('/api/chat/owner',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(ownerBody({player:c.name,text:text}))}); if(res.ok) loadOwnerChats(); } catch(e){}
     }
 
     // ---------------- Friend / Battle ----------------
